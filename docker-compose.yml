@@ -62,5 +62,19 @@ services:
       - api
     restart: unless-stopped
 
+  # Storefront (صفحة البيع)
+  storefront:
+    build:
+      context: ./storefront
+      dockerfile: Dockerfile
+    container_name: coreflex-storefront
+    environment:
+      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   postgres_data:
