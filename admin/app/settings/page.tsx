@@ -1,252 +1,351 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Store, Globe, Palette, Bell, Shield, Save } from 'lucide-react'
+/**
+ * Admin General Settings Page
+ * صفحة الإعدادات العامة
+ * 
+ * يجب وضعه في: admin/app/settings/page.tsx
+ */
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { adminApi } from '@/lib/api';
+
+interface StoreSettings {
+    store_name: string;
+    store_name_ar: string;
+    logo_url?: string;
+    favicon_url?: string;
+    email: string;
+    phone: string;
+    whatsapp?: string;
+    address?: string;
+    currency: string;
+    timezone: string;
+    tax_rate: number;
+    tax_included: boolean;
+    free_shipping_threshold?: number;
+    default_shipping_cost: number;
+    meta_title?: string;
+    meta_description?: string;
+    google_analytics_id?: string;
+    facebook_pixel_id?: string;
+}
+
+const settingsGroups = [
+    { key: 'general', label: 'عام', icon: '⚙️', href: '/settings' },
+    { key: 'security', label: 'الأمان', icon: '🔐', href: '/settings/security' },
+    { key: 'webhooks', label: 'Webhooks', icon: '🔗', href: '/settings/webhooks' },
+    { key: 'shipping', label: 'الشحن', icon: '🚚', href: '/settings/shipping' },
+    { key: 'payment', label: 'الدفع', icon: '💳', href: '/settings/payment' },
+    { key: 'notifications', label: 'الإشعارات', icon: '🔔', href: '/settings/notifications' },
+];
 
 export default function SettingsPage() {
-    const [settings, setSettings] = useState({
-        store_name: 'المتجر',
-        store_name_ar: 'المتجر',
-        email: 'support@store.com',
-        phone: '+966920000000',
-        address: 'الرياض، المملكة العربية السعودية',
-        currency: 'SAR',
-        language: 'ar',
-        primary_color: '#DC2626',
-        secondary_color: '#F59E0B',
-        notifications_email: true,
-        notifications_sms: false,
-        notifications_push: true,
-    })
+    const [settings, setSettings] = useState<StoreSettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState('store');
 
-    const handleSave = () => {
-        console.log('Settings saved:', settings)
-        alert('تم حفظ الإعدادات بنجاح!')
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    async function loadSettings() {
+        try {
+            setLoading(true);
+            const result = await adminApi.settings.get();
+            if (result.data) {
+                setSettings(result.data);
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            // Mock data for development
+            setSettings({
+                store_name: 'متجري',
+                store_name_ar: 'متجري',
+                email: 'info@mystore.com',
+                phone: '+966500000000',
+                currency: 'SAR',
+                timezone: 'Asia/Riyadh',
+                tax_rate: 15,
+                tax_included: true,
+                free_shipping_threshold: 200,
+                default_shipping_cost: 25,
+            });
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function saveSettings() {
+        if (!settings) return;
+
+        setSaving(true);
+        try {
+            await adminApi.settings.update(settings);
+            alert('تم حفظ الإعدادات بنجاح');
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            alert('فشل في حفظ الإعدادات');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const handleChange = (field: keyof StoreSettings, value: any) => {
+        if (settings) {
+            setSettings({ ...settings, [field]: value });
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="p-6">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-64 bg-gray-200 rounded"></div>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">الإعدادات</h1>
-                    <p className="text-gray-500">إدارة إعدادات متجرك</p>
-                </div>
-                <button onClick={handleSave} className="btn-primary flex items-center gap-2">
-                    <Save className="w-5 h-5" />
-                    حفظ التغييرات
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">الإعدادات</h1>
+                <button
+                    onClick={saveSettings}
+                    disabled={saving}
+                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-300"
+                >
+                    {saving ? 'جاري الحفظ...' : '💾 حفظ التغييرات'}
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Store Info */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                                <Store className="w-5 h-5 text-primary-600" />
-                            </div>
-                            <h2 className="font-bold text-gray-900">معلومات المتجر</h2>
-                        </div>
+            <div className="flex gap-6">
+                {/* Sidebar */}
+                <div className="w-64 flex-shrink-0">
+                    <nav className="bg-white rounded-xl shadow-sm p-4 space-y-1">
+                        {settingsGroups.map((group) => (
+                            <Link
+                                key={group.key}
+                                href={group.href}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${group.key === 'general'
+                                        ? 'bg-primary-50 text-primary-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <span>{group.icon}</span>
+                                <span>{group.label}</span>
+                            </Link>
+                        ))}
+                    </nav>
+                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                {/* Main Content */}
+                <div className="flex-1 space-y-6">
+                    {/* Store Info */}
+                    <div className="bg-white rounded-xl shadow-sm p-6">
+                        <h2 className="text-lg font-bold mb-4">معلومات المتجر</h2>
+
+                        <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-2 text-sm font-medium">اسم المتجر (عربي)</label>
+                                <label className="block text-sm font-medium mb-1">اسم المتجر (إنجليزي)</label>
                                 <input
                                     type="text"
-                                    value={settings.store_name_ar}
-                                    onChange={(e) => setSettings({ ...settings, store_name_ar: e.target.value })}
-                                    className="input-field"
+                                    value={settings?.store_name || ''}
+                                    onChange={(e) => handleChange('store_name', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 />
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium">اسم المتجر (انجليزي)</label>
+                                <label className="block text-sm font-medium mb-1">اسم المتجر (عربي)</label>
                                 <input
                                     type="text"
-                                    value={settings.store_name}
-                                    onChange={(e) => setSettings({ ...settings, store_name: e.target.value })}
-                                    className="input-field"
-                                    dir="ltr"
+                                    value={settings?.store_name_ar || ''}
+                                    onChange={(e) => handleChange('store_name_ar', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 />
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium">البريد الإلكتروني</label>
+                                <label className="block text-sm font-medium mb-1">البريد الإلكتروني</label>
                                 <input
                                     type="email"
-                                    value={settings.email}
-                                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                                    className="input-field"
-                                    dir="ltr"
+                                    value={settings?.email || ''}
+                                    onChange={(e) => handleChange('email', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 />
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium">رقم الهاتف</label>
+                                <label className="block text-sm font-medium mb-1">رقم الهاتف</label>
                                 <input
                                     type="tel"
-                                    value={settings.phone}
-                                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                                    className="input-field"
-                                    dir="ltr"
+                                    value={settings?.phone || ''}
+                                    onChange={(e) => handleChange('phone', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 />
                             </div>
-                            <div className="col-span-2">
-                                <label className="block mb-2 text-sm font-medium">العنوان</label>
-                                <textarea
-                                    value={settings.address}
-                                    onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                                    className="input-field"
-                                    rows={2}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">واتساب</label>
+                                <input
+                                    type="tel"
+                                    value={settings?.whatsapp || ''}
+                                    onChange={(e) => handleChange('whatsapp', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
+                                    placeholder="+966500000000"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">العنوان</label>
+                                <input
+                                    type="text"
+                                    value={settings?.address || ''}
+                                    onChange={(e) => handleChange('address', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Localization */}
-                    <div className="card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <Globe className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <h2 className="font-bold text-gray-900">الإقليمية</h2>
-                        </div>
+                    {/* Regional Settings */}
+                    <div className="bg-white rounded-xl shadow-sm p-6">
+                        <h2 className="text-lg font-bold mb-4">الإعدادات الإقليمية</h2>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-2 text-sm font-medium">العملة</label>
+                                <label className="block text-sm font-medium mb-1">العملة</label>
                                 <select
-                                    value={settings.currency}
-                                    onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
-                                    className="input-field"
+                                    value={settings?.currency || 'SAR'}
+                                    onChange={(e) => handleChange('currency', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 >
                                     <option value="SAR">ريال سعودي (SAR)</option>
                                     <option value="AED">درهم إماراتي (AED)</option>
+                                    <option value="KWD">دينار كويتي (KWD)</option>
+                                    <option value="EGP">جنيه مصري (EGP)</option>
                                     <option value="USD">دولار أمريكي (USD)</option>
-                                    <option value="EUR">يورو (EUR)</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium">اللغة الافتراضية</label>
+                                <label className="block text-sm font-medium mb-1">المنطقة الزمنية</label>
                                 <select
-                                    value={settings.language}
-                                    onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                                    className="input-field"
+                                    value={settings?.timezone || 'Asia/Riyadh'}
+                                    onChange={(e) => handleChange('timezone', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
                                 >
-                                    <option value="ar">العربية</option>
-                                    <option value="en">English</option>
+                                    <option value="Asia/Riyadh">الرياض (GMT+3)</option>
+                                    <option value="Asia/Dubai">دبي (GMT+4)</option>
+                                    <option value="Asia/Kuwait">الكويت (GMT+3)</option>
+                                    <option value="Africa/Cairo">القاهرة (GMT+2)</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    {/* Theme */}
-                    <div className="card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <Palette className="w-5 h-5 text-purple-600" />
-                            </div>
-                            <h2 className="font-bold text-gray-900">المظهر</h2>
-                        </div>
+                    {/* Tax & Shipping */}
+                    <div className="bg-white rounded-xl shadow-sm p-6">
+                        <h2 className="text-lg font-bold mb-4">الضريبة والشحن</h2>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block mb-2 text-sm font-medium">اللون الرئيسي</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="color"
-                                        value={settings.primary_color}
-                                        onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
-                                        className="w-12 h-10 rounded border cursor-pointer"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={settings.primary_color}
-                                        onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
-                                        className="input-field flex-1"
-                                        dir="ltr"
-                                    />
-                                </div>
+                                <label className="block text-sm font-medium mb-1">نسبة الضريبة (%)</label>
+                                <input
+                                    type="number"
+                                    value={settings?.tax_rate || 15}
+                                    onChange={(e) => handleChange('tax_rate', parseFloat(e.target.value))}
+                                    min="0"
+                                    max="100"
+                                    className="w-full px-4 py-2 border rounded-lg"
+                                />
                             </div>
                             <div>
-                                <label className="block mb-2 text-sm font-medium">اللون الثانوي</label>
-                                <div className="flex gap-2">
+                                <label className="block text-sm font-medium mb-1">سعر الشحن الافتراضي</label>
+                                <input
+                                    type="number"
+                                    value={settings?.default_shipping_cost || 25}
+                                    onChange={(e) => handleChange('default_shipping_cost', parseFloat(e.target.value))}
+                                    min="0"
+                                    className="w-full px-4 py-2 border rounded-lg"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">الحد الأدنى للشحن المجاني</label>
+                                <input
+                                    type="number"
+                                    value={settings?.free_shipping_threshold || ''}
+                                    onChange={(e) => handleChange('free_shipping_threshold', e.target.value ? parseFloat(e.target.value) : null)}
+                                    min="0"
+                                    placeholder="200"
+                                    className="w-full px-4 py-2 border rounded-lg"
+                                />
+                            </div>
+                            <div className="flex items-center">
+                                <label className="flex items-center gap-2">
                                     <input
-                                        type="color"
-                                        value={settings.secondary_color}
-                                        onChange={(e) => setSettings({ ...settings, secondary_color: e.target.value })}
-                                        className="w-12 h-10 rounded border cursor-pointer"
+                                        type="checkbox"
+                                        checked={settings?.tax_included || false}
+                                        onChange={(e) => handleChange('tax_included', e.target.checked)}
+                                        className="rounded text-primary-600"
                                     />
-                                    <input
-                                        type="text"
-                                        value={settings.secondary_color}
-                                        onChange={(e) => setSettings({ ...settings, secondary_color: e.target.value })}
-                                        className="input-field flex-1"
-                                        dir="ltr"
-                                    />
-                                </div>
+                                    <span>الأسعار شاملة الضريبة</span>
+                                </label>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* Notifications */}
-                    <div className="card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <Bell className="w-5 h-5 text-orange-600" />
-                            </div>
-                            <h2 className="font-bold text-gray-900">الإشعارات</h2>
-                        </div>
+                    {/* SEO & Tracking */}
+                    <div className="bg-white rounded-xl shadow-sm p-6">
+                        <h2 className="text-lg font-bold mb-4">SEO والتتبع</h2>
 
                         <div className="space-y-4">
-                            <label className="flex items-center justify-between cursor-pointer">
-                                <span className="text-sm">إشعارات البريد</span>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">عنوان الموقع (Meta Title)</label>
                                 <input
-                                    type="checkbox"
-                                    checked={settings.notifications_email}
-                                    onChange={(e) => setSettings({ ...settings, notifications_email: e.target.checked })}
-                                    className="w-5 h-5 rounded text-primary-600"
+                                    type="text"
+                                    value={settings?.meta_title || ''}
+                                    onChange={(e) => handleChange('meta_title', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
+                                    placeholder="متجر | أفضل المنتجات بأسعار منافسة"
                                 />
-                            </label>
-                            <label className="flex items-center justify-between cursor-pointer">
-                                <span className="text-sm">إشعارات SMS</span>
-                                <input
-                                    type="checkbox"
-                                    checked={settings.notifications_sms}
-                                    onChange={(e) => setSettings({ ...settings, notifications_sms: e.target.checked })}
-                                    className="w-5 h-5 rounded text-primary-600"
-                                />
-                            </label>
-                            <label className="flex items-center justify-between cursor-pointer">
-                                <span className="text-sm">إشعارات المتصفح</span>
-                                <input
-                                    type="checkbox"
-                                    checked={settings.notifications_push}
-                                    onChange={(e) => setSettings({ ...settings, notifications_push: e.target.checked })}
-                                    className="w-5 h-5 rounded text-primary-600"
-                                />
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Security */}
-                    <div className="card p-6">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <Shield className="w-5 h-5 text-green-600" />
                             </div>
-                            <h2 className="font-bold text-gray-900">الأمان</h2>
-                        </div>
-
-                        <div className="space-y-3">
-                            <button className="w-full btn-secondary text-sm">تغيير كلمة المرور</button>
-                            <button className="w-full btn-secondary text-sm">تفعيل المصادقة الثنائية</button>
-                            <button className="w-full btn-secondary text-sm">سجل الدخول</button>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">وصف الموقع (Meta Description)</label>
+                                <textarea
+                                    value={settings?.meta_description || ''}
+                                    onChange={(e) => handleChange('meta_description', e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-lg"
+                                    rows={2}
+                                    placeholder="تسوق أفضل المنتجات بأسعار منافسة مع شحن سريع لجميع مناطق المملكة"
+                                />
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Google Analytics ID</label>
+                                    <input
+                                        type="text"
+                                        value={settings?.google_analytics_id || ''}
+                                        onChange={(e) => handleChange('google_analytics_id', e.target.value)}
+                                        className="w-full px-4 py-2 border rounded-lg font-mono text-sm"
+                                        placeholder="G-XXXXXXXXXX"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Facebook Pixel ID</label>
+                                    <input
+                                        type="text"
+                                        value={settings?.facebook_pixel_id || ''}
+                                        onChange={(e) => handleChange('facebook_pixel_id', e.target.value)}
+                                        className="w-full px-4 py-2 border rounded-lg font-mono text-sm"
+                                        placeholder="XXXXXXXXXXXXXXX"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }

@@ -1,145 +1,305 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Search, Eye, Mail, Phone, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react'
+/**
+ * Admin Customers Page
+ * صفحة العملاء
+ * 
+ * يجب وضعه في: admin/app/customers/page.tsx
+ */
 
-const customers = [
-    { id: '1', name: 'أحمد محمد', email: 'ahmed@email.com', phone: '0501234567', orders: 12, total_spent: 15420, last_order: '2024-12-25', status: 'active' },
-    { id: '2', name: 'سارة علي', email: 'sara@email.com', phone: '0551234567', orders: 8, total_spent: 8900, last_order: '2024-12-24', status: 'active' },
-    { id: '3', name: 'محمد خالد', email: 'mohamed@email.com', phone: '0561234567', orders: 5, total_spent: 4500, last_order: '2024-12-20', status: 'active' },
-    { id: '4', name: 'نورة أحمد', email: 'noura@email.com', phone: '0571234567', orders: 3, total_spent: 2100, last_order: '2024-12-15', status: 'inactive' },
-    { id: '5', name: 'عبدالله سعد', email: 'abdullah@email.com', phone: '0581234567', orders: 1, total_spent: 750, last_order: '2024-12-10', status: 'active' },
-]
+import { useEffect, useState } from 'react';
+import { adminApi } from '@/lib/api';
+
+interface Customer {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    orders_count: number;
+    total_spent: number;
+    last_order_at?: string;
+    created_at: string;
+    is_active: boolean;
+}
 
 export default function CustomersPage() {
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+    useEffect(() => {
+        loadCustomers();
+    }, []);
+
+    async function loadCustomers() {
+        try {
+            setLoading(true);
+            const result = await adminApi.customers.getAll({ search });
+            if (result.data) {
+                setCustomers(result.data.customers || result.data);
+            }
+        } catch (error) {
+            console.error('Error loading customers:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const formatDate = (date?: string) => {
+        if (!date) return 'لم يطلب بعد';
+        return new Date(date).toLocaleDateString('ar-SA');
+    };
+
+    const getCustomerTier = (totalSpent: number) => {
+        if (totalSpent >= 5000) return { label: 'VIP', color: 'bg-purple-100 text-purple-800', icon: '👑' };
+        if (totalSpent >= 1000) return { label: 'ذهبي', color: 'bg-yellow-100 text-yellow-800', icon: '⭐' };
+        if (totalSpent >= 500) return { label: 'فضي', color: 'bg-gray-100 text-gray-800', icon: '🥈' };
+        return { label: 'عادي', color: 'bg-blue-100 text-blue-800', icon: '👤' };
+    };
+
     return (
-        <div className="space-y-6">
+        <div className="p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">العملاء</h1>
-                    <p className="text-gray-500">{customers.length} عميل</p>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">العملاء</h1>
+                <div className="text-sm text-gray-500">
+                    إجمالي: {customers.length} عميل
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="stat-card">
+            <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-xl p-4 shadow-sm">
                     <p className="text-sm text-gray-500">إجمالي العملاء</p>
-                    <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
+                    <p className="text-2xl font-bold">{customers.length}</p>
                 </div>
-                <div className="stat-card">
-                    <p className="text-sm text-gray-500">العملاء النشطين</p>
-                    <p className="text-2xl font-bold text-green-600">{customers.filter(c => c.status === 'active').length}</p>
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-gray-500">عملاء VIP</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                        {customers.filter(c => c.total_spent >= 5000).length}
+                    </p>
                 </div>
-                <div className="stat-card">
-                    <p className="text-sm text-gray-500">إجمالي المبيعات</p>
-                    <p className="text-2xl font-bold text-gray-900">{customers.reduce((sum, c) => sum + c.total_spent, 0).toLocaleString()} ر.س</p>
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-gray-500">متوسط الإنفاق</p>
+                    <p className="text-2xl font-bold text-green-600">
+                        {customers.length > 0
+                            ? (customers.reduce((sum, c) => sum + c.total_spent, 0) / customers.length).toFixed(0)
+                            : 0} ر.س
+                    </p>
                 </div>
-                <div className="stat-card">
-                    <p className="text-sm text-gray-500">متوسط قيمة الطلب</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                        {Math.round(customers.reduce((sum, c) => sum + c.total_spent, 0) / customers.reduce((sum, c) => sum + c.orders, 0))} ر.س
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-gray-500">عملاء الشهر</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                        {customers.filter(c => {
+                            const monthAgo = new Date();
+                            monthAgo.setMonth(monthAgo.getMonth() - 1);
+                            return new Date(c.created_at) > monthAgo;
+                        }).length}
                     </p>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="card p-4">
-                <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex-grow max-w-md relative">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="ابحث بالاسم أو الإيميل أو الهاتف..."
-                            className="input-field pr-10"
-                        />
-                    </div>
-                    <select className="input-field w-auto">
-                        <option value="">جميع العملاء</option>
-                        <option value="active">نشط</option>
-                        <option value="inactive">غير نشط</option>
-                    </select>
+            {/* Search */}
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+                <div className="flex gap-4">
+                    <input
+                        type="text"
+                        placeholder="بحث بالاسم، الإيميل، أو رقم الهاتف..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && loadCustomers()}
+                        className="flex-1 px-4 py-2 border rounded-lg"
+                    />
+                    <button
+                        onClick={loadCustomers}
+                        className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                    >
+                        بحث
+                    </button>
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="card overflow-hidden">
-                <table className="w-full">
-                    <thead className="table-header">
-                        <tr>
-                            <th className="p-4 text-right">العميل</th>
-                            <th className="p-4 text-right">التواصل</th>
-                            <th className="p-4 text-right">الطلبات</th>
-                            <th className="p-4 text-right">إجمالي المشتريات</th>
-                            <th className="p-4 text-right">آخر طلب</th>
-                            <th className="p-4 text-right">الحالة</th>
-                            <th className="p-4 text-right">الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {customers.map((customer) => (
-                            <tr key={customer.id} className="table-row">
-                                <td className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                                            <span className="text-primary-600 font-bold">{customer.name.charAt(0)}</span>
-                                        </div>
-                                        <span className="font-medium text-gray-900">{customer.name}</span>
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    <div className="text-sm">
-                                        <div className="flex items-center gap-1 text-gray-600">
-                                            <Mail className="w-4 h-4" />
-                                            {customer.email}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-gray-500">
-                                            <Phone className="w-4 h-4" />
-                                            {customer.phone}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-1">
-                                        <ShoppingCart className="w-4 h-4 text-gray-400" />
-                                        <span>{customer.orders}</span>
-                                    </div>
-                                </td>
-                                <td className="p-4 font-bold">{customer.total_spent.toLocaleString()} ر.س</td>
-                                <td className="p-4 text-gray-500 text-sm">{customer.last_order}</td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${customer.status === 'active'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-gray-100 text-gray-700'
-                                        }`}>
-                                        {customer.status === 'active' ? 'نشط' : 'غير نشط'}
-                                    </span>
-                                </td>
-                                <td className="p-4">
-                                    <Link href={`/customers/${customer.id}`} className="p-2 hover:bg-gray-100 rounded-lg inline-flex" title="عرض">
-                                        <Eye className="w-4 h-4 text-gray-500" />
-                                    </Link>
-                                </td>
+            {/* Customers Table */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                {loading ? (
+                    <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                    </div>
+                ) : customers.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                        لا يوجد عملاء
+                    </div>
+                ) : (
+                    <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                            <tr>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">العميل</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الفئة</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الطلبات</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">إجمالي الإنفاق</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">آخر طلب</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">منذ</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y">
+                            {customers.map((customer) => {
+                                const tier = getCustomerTier(customer.total_spent);
+                                return (
+                                    <tr
+                                        key={customer.id}
+                                        className="hover:bg-gray-50 cursor-pointer"
+                                        onClick={() => setSelectedCustomer(customer)}
+                                    >
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center font-bold">
+                                                    {customer.first_name?.[0] || '?'}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium">{customer.first_name} {customer.last_name}</p>
+                                                    <p className="text-sm text-gray-500">{customer.email}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${tier.color}`}>
+                                                {tier.icon} {tier.label}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 font-medium">
+                                            {customer.orders_count} طلب
+                                        </td>
+                                        <td className="px-4 py-4 font-bold text-primary-600">
+                                            {customer.total_spent.toFixed(2)} ر.س
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-500">
+                                            {formatDate(customer.last_order_at)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-500">
+                                            {formatDate(customer.created_at)}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
+            </div>
 
-                {/* Pagination */}
-                <div className="p-4 border-t flex items-center justify-between">
-                    <p className="text-sm text-gray-500">عرض 1-5 من 5 عميل</p>
-                    <div className="flex items-center gap-2">
-                        <button className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled>
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled>
-                            <ChevronLeft className="w-4 h-4" />
-                        </button>
+            {/* Customer Details Modal */}
+            {selectedCustomer && (
+                <CustomerModal
+                    customer={selectedCustomer}
+                    onClose={() => setSelectedCustomer(null)}
+                />
+            )}
+        </div>
+    );
+}
+
+// ==================== Customer Modal ====================
+
+function CustomerModal({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+    const [orders, setOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadCustomerOrders();
+    }, []);
+
+    async function loadCustomerOrders() {
+        try {
+            const result = await adminApi.customers.getOrders(customer.id);
+            if (result.data) {
+                setOrders(result.data.orders || result.data);
+            }
+        } catch (error) {
+            console.error('Error loading orders:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const tier = customer.total_spent >= 5000 ? 'VIP' :
+        customer.total_spent >= 1000 ? 'ذهبي' :
+            customer.total_spent >= 500 ? 'فضي' : 'عادي';
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b flex items-center justify-between">
+                    <h2 className="text-xl font-bold">ملف العميل</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                </div>
+
+                <div className="p-6">
+                    {/* Customer Info */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-2xl font-bold">
+                            {customer.first_name?.[0] || '?'}
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold">{customer.first_name} {customer.last_name}</h3>
+                            <p className="text-gray-500">{customer.email}</p>
+                            {customer.phone && <p className="text-sm text-gray-400">{customer.phone}</p>}
+                        </div>
+                        <div className="mr-auto text-left">
+                            <span className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-medium">
+                                {tier}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <p className="text-2xl font-bold text-primary-600">{customer.orders_count}</p>
+                            <p className="text-sm text-gray-500">طلب</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <p className="text-2xl font-bold text-green-600">{customer.total_spent.toFixed(0)}</p>
+                            <p className="text-sm text-gray-500">ر.س إجمالي</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <p className="text-2xl font-bold text-blue-600">
+                                {customer.orders_count > 0
+                                    ? (customer.total_spent / customer.orders_count).toFixed(0)
+                                    : 0}
+                            </p>
+                            <p className="text-sm text-gray-500">ر.س متوسط</p>
+                        </div>
+                    </div>
+
+                    {/* Orders History */}
+                    <div>
+                        <h4 className="font-medium mb-3">سجل الطلبات</h4>
+                        {loading ? (
+                            <div className="text-center py-4">جاري التحميل...</div>
+                        ) : orders.length === 0 ? (
+                            <div className="text-center py-4 text-gray-500">لا توجد طلبات</div>
+                        ) : (
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {orders.map((order: any) => (
+                                    <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div>
+                                            <p className="font-medium">#{order.order_number}</p>
+                                            <p className="text-sm text-gray-500">
+                                                {new Date(order.created_at).toLocaleDateString('ar-SA')}
+                                            </p>
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="font-bold text-primary-600">{order.total?.toFixed(2)} ر.س</p>
+                                            <p className="text-xs text-gray-500">{order.status}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }
