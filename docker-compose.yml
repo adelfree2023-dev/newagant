@@ -90,5 +90,19 @@ services:
       - api
     restart: unless-stopped
 
+  # Super Admin (إدارة المنصة)
+  superadmin:
+    build:
+      context: ./superadmin
+      dockerfile: Dockerfile
+    container_name: coreflex-superadmin
+    environment:
+      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
+    ports:
+      - "3003:3003"
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   postgres_data:
