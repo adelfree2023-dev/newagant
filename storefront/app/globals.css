@@ -1,22 +1,136 @@
+/**
+ * Storefront Global CSS
+ * الأنماط العامة للمتجر
+ * 
+ * يجب وضعه في: storefront/app/globals.css
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Font */
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
-
-/* Base */
-html {
-    scroll-behavior: smooth;
-}
-
-body {
+.font-tajawal {
     font-family: 'Tajawal', sans-serif;
-    direction: rtl;
-    text-align: right;
 }
 
-/* Custom Scrollbar */
+/* Primary Colors - Can be customized per tenant */
+:root {
+    --primary-50: #fef2f2;
+    --primary-100: #fee2e2;
+    --primary-200: #fecaca;
+    --primary-300: #fca5a5;
+    --primary-400: #f87171;
+    --primary-500: #ef4444;
+    --primary-600: #dc2626;
+    --primary-700: #b91c1c;
+    --primary-800: #991b1b;
+    --primary-900: #7f1d1d;
+}
+
+/* Custom Properties for theming */
+[data-theme="blue"] {
+    --primary-500: #3b82f6;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
+}
+
+[data-theme="green"] {
+    --primary-500: #22c55e;
+    --primary-600: #16a34a;
+    --primary-700: #15803d;
+}
+
+[data-theme="purple"] {
+    --primary-500: #a855f7;
+    --primary-600: #9333ea;
+    --primary-700: #7e22ce;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+    animation: slideUp 0.4s ease-out;
+}
+
+.animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse-once {
+    animation: pulse 0.3s ease-out;
+}
+
+.animate-shake {
+    animation: shake 0.3s ease-out;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -35,134 +149,184 @@ body {
     background: #a1a1a1;
 }
 
-/* Custom Classes */
-@layer components {
-    .btn-primary {
-        @apply bg-primary-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-primary-600 transition-all duration-200 active:scale-95;
-    }
+/* Form Styles */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
 
-    .btn-secondary {
-        @apply bg-secondary-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-secondary-600 transition-all duration-200 active:scale-95;
-    }
+/* Button Styles */
+.btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200;
+}
 
-    .btn-outline {
-        @apply border-2 border-primary-500 text-primary-500 px-6 py-3 rounded-lg font-bold hover:bg-primary-500 hover:text-white transition-all duration-200;
-    }
+.btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800;
+}
 
-    .card {
-        @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200;
-    }
+.btn-secondary {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+}
 
-    .card-hover {
-        @apply bg-white rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300;
-    }
+.btn-outline {
+    @apply border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white;
+}
 
-    .input-field {
-        @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all duration-200;
-    }
+/* Product Card */
+.product-card {
+    @apply bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200;
+}
 
-    .badge {
-        @apply inline-block px-2 py-1 text-xs font-bold rounded-full;
-    }
+.product-card:hover {
+    @apply shadow-md -translate-y-1;
+}
 
-    .badge-sale {
-        @apply bg-red-500 text-white;
-    }
+/* Badge Styles */
+.badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
 
-    .badge-new {
-        @apply bg-green-500 text-white;
-    }
+.badge-sale {
+    @apply bg-red-500 text-white;
+}
 
-    .badge-hot {
-        @apply bg-orange-500 text-white;
+.badge-new {
+    @apply bg-green-500 text-white;
+}
+
+.badge-featured {
+    @apply bg-yellow-400 text-yellow-900;
+}
+
+/* Price Styles */
+.price {
+    @apply text-primary-600 font-bold;
+}
+
+.price-old {
+    @apply text-gray-400 line-through text-sm;
+}
+
+/* Loading Skeleton */
+.skeleton {
+    @apply bg-gray-200 animate-pulse rounded;
+}
+
+/* Toast Notifications */
+.toast {
+    @apply fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 p-4 rounded-lg shadow-lg z-50 animate-slideUp;
+}
+
+.toast-success {
+    @apply bg-green-600 text-white;
+}
+
+.toast-error {
+    @apply bg-red-600 text-white;
+}
+
+.toast-info {
+    @apply bg-blue-600 text-white;
+}
+
+/* Empty State */
+.empty-state {
+    @apply flex flex-col items-center justify-center py-16 text-center;
+}
+
+/* Quantity Selector */
+.quantity-btn {
+    @apply w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold transition-colors;
+}
+
+/* Category Card */
+.category-card {
+    @apply relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br from-gray-100 to-gray-200;
+}
+
+.category-card-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4;
+}
+
+/* Hero Section */
+.hero {
+    @apply relative bg-gradient-to-br from-primary-600 to-primary-800 text-white;
+}
+
+.hero-overlay {
+    @apply absolute inset-0 bg-black/20;
+}
+
+/* Newsletter */
+.newsletter {
+    @apply bg-gradient-to-r from-primary-600 to-primary-700 text-white py-12;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    @apply flex items-center gap-2 text-sm text-gray-500;
+}
+
+.breadcrumb a {
+    @apply hover:text-primary-600;
+}
+
+.breadcrumb-separator {
+    @apply text-gray-300;
+}
+
+/* Rating Stars */
+.stars {
+    @apply flex items-center gap-0.5;
+}
+
+.star {
+    @apply text-yellow-400;
+}
+
+.star-empty {
+    @apply text-gray-300;
+}
+
+/* Responsive Images */
+.image-container {
+    @apply relative overflow-hidden bg-gray-100;
+}
+
+.image-container img {
+    @apply object-cover transition-transform duration-300;
+}
+
+.image-container:hover img {
+    @apply scale-105;
+}
+
+/* RTL Specific */
+[dir="rtl"] .flip-rtl {
+    transform: scaleX(-1);
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
     }
 }
 
-/* Animations */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
+/* Mobile Bottom Navigation */
+@media (max-width: 768px) {
+    .bottom-nav {
+        @apply fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40;
     }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideInRight {
-    from {
-        opacity: 0;
-        transform: translateX(20px);
+    .bottom-nav-item {
+        @apply flex flex-col items-center justify-center py-2 px-4 text-xs text-gray-600;
     }
 
-    to {
-        opacity: 1;
-        transform: translateX(0);
+    .bottom-nav-item.active {
+        @apply text-primary-600;
     }
-}
-
-@keyframes pulse-glow {
-
-    0%,
-    100% {
-        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
-    }
-
-    50% {
-        box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
-    }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.5s ease-out;
-}
-
-.animate-slideInRight {
-    animation: slideInRight 0.5s ease-out;
-}
-
-.animate-pulse-glow {
-    animation: pulse-glow 2s infinite;
-}
-
-/* Product Card Hover */
-.product-card:hover .product-image {
-    transform: scale(1.05);
-}
-
-.product-card:hover .quick-actions {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.product-card .quick-actions {
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s ease;
-}
-
-/* Mega Menu */
-.mega-menu {
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(10px);
-    transition: all 0.2s ease;
-}
-
-.mega-menu-trigger:hover .mega-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-/* Category Slider */
-.category-scroll {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-
-.category-scroll::-webkit-scrollbar {
-    display: none;
 }

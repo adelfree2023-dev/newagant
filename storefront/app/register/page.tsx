@@ -1,199 +1,208 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowLeft, Store, CheckCircle } from 'lucide-react'
+/**
+ * Storefront Register Page
+ * صفحة التسجيل
+ * 
+ * يجب وضعه في: storefront/app/register/page.tsx
+ */
+
+import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function RegisterPage() {
-    const [showPassword, setShowPassword] = useState(false)
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
         password: '',
         confirmPassword: '',
-        terms: false,
-        newsletter: true,
-    })
-    const [loading, setLoading] = useState(false)
+    });
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [agreed, setAgreed] = useState(false);
 
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const { register } = useAuth();
+    const router = useRouter();
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        // Validation
         if (formData.password !== formData.confirmPassword) {
-            alert('كلمة المرور غير متطابقة')
-            return
+            setError('كلمة المرور غير متطابقة');
+            return;
         }
-        setLoading(true)
-        setTimeout(() => {
-            setLoading(false)
-            window.location.href = '/account'
-        }, 1500)
-    }
 
-    const benefits = [
-        'تتبع طلباتك بسهولة',
-        'حفظ عناوين التوصيل',
-        'قائمة المفضلة',
-        'عروض حصرية للأعضاء',
-        'نقاط ولاء مع كل عملية شراء',
-    ]
+        if (formData.password.length < 6) {
+            setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+            return;
+        }
+
+        if (!agreed) {
+            setError('يجب الموافقة على الشروط والأحكام');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const result = await register({
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                password: formData.password,
+            });
+
+            if (result.error) {
+                setError(result.error);
+            } else {
+                router.push('/');
+            }
+        } catch (err) {
+            setError('حدث خطأ في إنشاء الحساب');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Left Side - Form */}
-            <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-                <div className="w-full max-w-md">
-                    <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8">
-                        <ArrowLeft className="w-5 h-5" />
-                        العودة للمتجر
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <h1 className="text-2xl font-bold text-gray-900">إنشاء حساب جديد</h1>
+                    <p className="text-gray-500 mt-2">انضم إلينا وابدأ التسوق</p>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+                        {error}
+                    </div>
+                )}
+
+                {/* Register Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            الاسم الكامل *
+                        </label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="محمد أحمد"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            البريد الإلكتروني *
+                        </label>
+                        <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="example@email.com"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            رقم الهاتف *
+                        </label>
+                        <input
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="05xxxxxxxx"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            كلمة المرور *
+                        </label>
+                        <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="••••••••"
+                            required
+                            minLength={6}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            تأكيد كلمة المرور *
+                        </label>
+                        <input
+                            type="password"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+
+                    <label className="flex items-start gap-2">
+                        <input
+                            type="checkbox"
+                            checked={agreed}
+                            onChange={(e) => setAgreed(e.target.checked)}
+                            className="mt-1 rounded text-primary-600"
+                        />
+                        <span className="text-sm text-gray-600">
+                            أوافق على{' '}
+                            <Link href="/terms" className="text-primary-600 hover:underline">
+                                الشروط والأحكام
+                            </Link>
+                            {' '}و{' '}
+                            <Link href="/privacy" className="text-primary-600 hover:underline">
+                                سياسة الخصوصية
+                            </Link>
+                        </span>
+                    </label>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 disabled:bg-gray-300 transition-colors"
+                    >
+                        {loading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
+                    </button>
+                </form>
+
+                {/* Login Link */}
+                <p className="text-center mt-6 text-gray-600">
+                    لديك حساب بالفعل؟{' '}
+                    <Link href="/login" className="text-primary-600 font-medium hover:underline">
+                        تسجيل الدخول
                     </Link>
-
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">إنشاء حساب جديد</h1>
-                    <p className="text-gray-500 mb-8">انضم إلينا واستمتع بتجربة تسوق مميزة</p>
-
-                    <form onSubmit={handleRegister} className="space-y-4">
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">الاسم الكامل *</label>
-                            <div className="relative">
-                                <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full pr-10 pl-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="أحمد محمد"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">البريد الإلكتروني *</label>
-                            <div className="relative">
-                                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="w-full pr-10 pl-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="email@example.com"
-                                    dir="ltr"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">رقم الهاتف *</label>
-                            <div className="relative">
-                                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full pr-10 pl-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="+966500000000"
-                                    dir="ltr"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">كلمة المرور *</label>
-                            <div className="relative">
-                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full pr-10 pl-12 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="••••••••"
-                                    dir="ltr"
-                                    required
-                                    minLength={8}
-                                />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">تأكيد كلمة المرور *</label>
-                            <div className="relative">
-                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="password"
-                                    value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                    className="w-full pr-10 pl-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="••••••••"
-                                    dir="ltr"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <label className="flex items-start gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.terms}
-                                    onChange={(e) => setFormData({ ...formData, terms: e.target.checked })}
-                                    className="w-4 h-4 mt-1 rounded text-primary-600"
-                                    required
-                                />
-                                <span className="text-sm text-gray-600">
-                                    أوافق على <Link href="/privacy" className="text-primary-600 hover:underline">سياسة الخصوصية</Link> و<Link href="/terms" className="text-primary-600 hover:underline">شروط الاستخدام</Link>
-                                </span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.newsletter}
-                                    onChange={(e) => setFormData({ ...formData, newsletter: e.target.checked })}
-                                    className="w-4 h-4 rounded text-primary-600"
-                                />
-                                <span className="text-sm text-gray-600">أرغب في استلام العروض والتخفيضات</span>
-                            </label>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50"
-                        >
-                            {loading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
-                        </button>
-                    </form>
-
-                    <div className="mt-6 text-center">
-                        <span className="text-gray-500">لديك حساب؟ </span>
-                        <Link href="/login" className="text-primary-600 font-medium hover:underline">
-                            سجل دخولك
-                        </Link>
-                    </div>
-                </div>
-            </div>
-
-            {/* Right Side */}
-            <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary-600 to-primary-800 items-center justify-center p-12">
-                <div className="text-white max-w-md">
-                    <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                        <Store className="w-10 h-10 text-white" />
-                    </div>
-                    <h2 className="text-3xl font-bold mb-6">مزايا التسجيل</h2>
-                    <ul className="space-y-4">
-                        {benefits.map((benefit, index) => (
-                            <li key={index} className="flex items-center gap-3">
-                                <CheckCircle className="w-5 h-5 text-green-400" />
-                                <span>{benefit}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                </p>
             </div>
         </div>
-    )
+    );
 }

@@ -1,263 +1,347 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { ChevronRight, CreditCard, Truck, CheckCircle } from 'lucide-react'
+/**
+ * Storefront Checkout Page
+ * صفحة إتمام الشراء
+ * 
+ * يجب وضعه في: storefront/app/checkout/page.tsx
+ */
+
+import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
+
+interface ShippingAddress {
+    name: string;
+    phone: string;
+    address: string;
+    city: string;
+    notes: string;
+}
 
 export default function CheckoutPage() {
-    const [step, setStep] = useState(1)
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        phone: '',
-        email: '',
-        city: '',
+    const { items, total, clearCart } = useCart();
+    const { user } = useAuth();
+    const router = useRouter();
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [step, setStep] = useState<'address' | 'payment' | 'confirmation'>('address');
+    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
+
+    const [address, setAddress] = useState<ShippingAddress>({
+        name: user?.name || '',
+        phone: user?.phone || '',
         address: '',
-        paymentMethod: 'cod'
-    })
+        city: '',
+        notes: '',
+    });
 
-    // Mock order summary
-    const subtotal = 6997
-    const shipping = 0
-    const total = 6997
+    const shippingCost = total >= 200 ? 0 : 25;
+    const grandTotal = total + shippingCost;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (step < 3) {
-            setStep(step + 1)
-        } else {
-            // Place order
-            window.location.href = '/order-success'
+    const cities = [
+        'الرياض', 'جدة', 'مكة المكرمة', 'المدينة المنورة', 'الدمام',
+        'الخبر', 'الظهران', 'الجبيل', 'الطائف', 'تبوك', 'القصيم',
+    ];
+
+    const handleAddressSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!address.name || !address.phone || !address.address || !address.city) {
+            setError('يرجى ملء جميع الحقول المطلوبة');
+            return;
         }
+        setError(null);
+        setStep('payment');
+    };
+
+    const handlePlaceOrder = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const orderData = {
+                items: items.map(item => ({
+                    product_id: item.productId,
+                    quantity: item.quantity,
+                    price: item.price,
+                })),
+                shipping_address: address,
+                payment_method: paymentMethod,
+                subtotal: total,
+                shipping_cost: shippingCost,
+                total: grandTotal,
+                notes: address.notes,
+            };
+
+            const result = await api.orders.create(orderData);
+
+            if (result.error) {
+                setError(result.error);
+                return;
+            }
+
+            // Success!
+            clearCart();
+            setStep('confirmation');
+
+        } catch (err) {
+            setError('حدث خطأ في إنشاء الطلب');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (items.length === 0 && step !== 'confirmation') {
+        router.push('/cart');
+        return null;
+    }
+
+    // Confirmation Step
+    if (step === 'confirmation') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-4xl">✓</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">تم استلام طلبك!</h1>
+                    <p className="text-gray-500 mb-6">
+                        سيتم التواصل معك قريباً لتأكيد الطلب
+                    </p>
+                    <button
+                        onClick={() => router.push('/account/orders')}
+                        className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
+                    >
+                        متابعة طلباتي
+                    </button>
+                    <button
+                        onClick={() => router.push('/')}
+                        className="w-full py-3 mt-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+                    >
+                        العودة للرئيسية
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-                <Link href="/cart" className="hover:text-primary-500">السلة</Link>
-                <ChevronRight className="w-4 h-4" />
-                <span className="text-gray-900">إتمام الشراء</span>
-            </nav>
-
-            {/* Steps */}
-            <div className="flex justify-center mb-8">
-                <div className="flex items-center gap-4">
-                    {[
-                        { num: 1, title: 'العنوان', icon: Truck },
-                        { num: 2, title: 'الدفع', icon: CreditCard },
-                        { num: 3, title: 'تأكيد', icon: CheckCircle },
-                    ].map((s, index) => (
-                        <div key={s.num} className="flex items-center gap-4">
-                            <div className={`flex items-center gap-2 ${step >= s.num ? 'text-primary-500' : 'text-gray-400'}`}>
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${step >= s.num ? 'bg-primary-500 text-white' : 'bg-gray-200'
-                                    }`}>
-                                    <s.icon className="w-5 h-5" />
-                                </div>
-                                <span className="font-medium hidden sm:block">{s.title}</span>
-                            </div>
-                            {index < 2 && <div className={`w-12 h-1 rounded ${step > s.num ? 'bg-primary-500' : 'bg-gray-200'}`} />}
+        <div className="min-h-screen bg-gray-50 py-8">
+            <div className="max-w-4xl mx-auto px-4">
+                {/* Progress Steps */}
+                <div className="flex items-center justify-center gap-4 mb-8">
+                    <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary-600' : 'text-gray-400'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary-600 text-white' : 'bg-gray-200'
+                            }`}>
+                            1
                         </div>
-                    ))}
+                        <span className="font-medium">العنوان</span>
+                    </div>
+                    <div className="w-12 h-px bg-gray-300"></div>
+                    <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-primary-600' : 'text-gray-400'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment' ? 'bg-primary-600 text-white' : 'bg-gray-200'
+                            }`}>
+                            2
+                        </div>
+                        <span className="font-medium">الدفع</span>
+                    </div>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Form */}
-                <div className="lg:col-span-2">
-                    <form onSubmit={handleSubmit} className="bg-white rounded-xl p-6 shadow-sm">
-                        {step === 1 && (
-                            <>
-                                <h2 className="text-xl font-bold mb-6">عنوان التوصيل</h2>
-                                <div className="grid grid-cols-2 gap-4">
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Main Form */}
+                    <div className="lg:col-span-2">
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Address Step */}
+                        {step === 'address' && (
+                            <form onSubmit={handleAddressSubmit} className="bg-white rounded-xl shadow-sm p-6">
+                                <h2 className="text-lg font-bold text-gray-900 mb-4">عنوان التوصيل</h2>
+
+                                <div className="grid md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block mb-2 font-medium">الاسم الأول</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            الاسم الكامل *
+                                        </label>
                                         <input
                                             type="text"
-                                            value={formData.firstName}
-                                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                            className="input-field"
+                                            value={address.name}
+                                            onChange={(e) => setAddress({ ...address, name: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                             required
                                         />
                                     </div>
+
                                     <div>
-                                        <label className="block mb-2 font-medium">اسم العائلة</label>
-                                        <input
-                                            type="text"
-                                            value={formData.lastName}
-                                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                            className="input-field"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-2 font-medium">رقم الجوال</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            رقم الهاتف *
+                                        </label>
                                         <input
                                             type="tel"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            className="input-field"
-                                            dir="ltr"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-2 font-medium">البريد الإلكتروني</label>
-                                        <input
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            className="input-field"
-                                            dir="ltr"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-2 font-medium">المدينة</label>
-                                        <select
-                                            value={formData.city}
-                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                            className="input-field"
-                                            required
-                                        >
-                                            <option value="">اختر المدينة</option>
-                                            <option value="riyadh">الرياض</option>
-                                            <option value="jeddah">جدة</option>
-                                            <option value="dammam">الدمام</option>
-                                            <option value="makkah">مكة المكرمة</option>
-                                            <option value="madinah">المدينة المنورة</option>
-                                        </select>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="block mb-2 font-medium">العنوان التفصيلي</label>
-                                        <textarea
-                                            value={formData.address}
-                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                            className="input-field"
-                                            rows={3}
+                                            value={address.phone}
+                                            onChange={(e) => setAddress({ ...address, phone: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                             required
                                         />
                                     </div>
                                 </div>
-                            </>
-                        )}
 
-                        {step === 2 && (
-                            <>
-                                <h2 className="text-xl font-bold mb-6">طريقة الدفع</h2>
-                                <div className="space-y-4">
-                                    <label className={`block p-4 border-2 rounded-xl cursor-pointer transition ${formData.paymentMethod === 'cod' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-                                        }`}>
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            value="cod"
-                                            checked={formData.paymentMethod === 'cod'}
-                                            onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                            className="ml-2"
-                                        />
-                                        <span className="font-medium">الدفع عند الاستلام</span>
-                                        <p className="text-sm text-gray-500 mt-1">ادفع نقداً عند استلام الطلب</p>
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        المدينة *
                                     </label>
-
-                                    <label className={`block p-4 border-2 rounded-xl cursor-pointer transition ${formData.paymentMethod === 'card' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-                                        }`}>
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            value="card"
-                                            checked={formData.paymentMethod === 'card'}
-                                            onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                            className="ml-2"
-                                        />
-                                        <span className="font-medium">بطاقة ائتمانية</span>
-                                        <p className="text-sm text-gray-500 mt-1">Visa, Mastercard, Mada</p>
-                                    </label>
-
-                                    <label className={`block p-4 border-2 rounded-xl cursor-pointer transition ${formData.paymentMethod === 'bank' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-                                        }`}>
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            value="bank"
-                                            checked={formData.paymentMethod === 'bank'}
-                                            onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                            className="ml-2"
-                                        />
-                                        <span className="font-medium">تحويل بنكي</span>
-                                        <p className="text-sm text-gray-500 mt-1">حوّل المبلغ مباشرة لحسابنا البنكي</p>
-                                    </label>
+                                    <select
+                                        value={address.city}
+                                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    >
+                                        <option value="">اختر المدينة</option>
+                                        {cities.map((city) => (
+                                            <option key={city} value={city}>{city}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                            </>
-                        )}
 
-                        {step === 3 && (
-                            <>
-                                <h2 className="text-xl font-bold mb-6">تأكيد الطلب</h2>
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-gray-50 rounded-xl">
-                                        <h3 className="font-bold mb-2">عنوان التوصيل</h3>
-                                        <p className="text-gray-600">
-                                            {formData.firstName} {formData.lastName}<br />
-                                            {formData.address}<br />
-                                            {formData.city}<br />
-                                            {formData.phone}
-                                        </p>
-                                    </div>
-                                    <div className="p-4 bg-gray-50 rounded-xl">
-                                        <h3 className="font-bold mb-2">طريقة الدفع</h3>
-                                        <p className="text-gray-600">
-                                            {formData.paymentMethod === 'cod' && 'الدفع عند الاستلام'}
-                                            {formData.paymentMethod === 'card' && 'بطاقة ائتمانية'}
-                                            {formData.paymentMethod === 'bank' && 'تحويل بنكي'}
-                                        </p>
-                                    </div>
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        العنوان التفصيلي *
+                                    </label>
+                                    <textarea
+                                        value={address.address}
+                                        onChange={(e) => setAddress({ ...address, address: e.target.value })}
+                                        rows={3}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        placeholder="الحي، الشارع، رقم المبنى، الشقة..."
+                                        required
+                                    />
                                 </div>
-                            </>
-                        )}
 
-                        <div className="flex gap-4 mt-8">
-                            {step > 1 && (
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        ملاحظات (اختياري)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={address.notes}
+                                        onChange={(e) => setAddress({ ...address, notes: e.target.value })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        placeholder="تعليمات التوصيل..."
+                                    />
+                                </div>
+
                                 <button
-                                    type="button"
-                                    onClick={() => setStep(step - 1)}
-                                    className="btn-outline flex-1"
+                                    type="submit"
+                                    className="w-full mt-6 py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700"
                                 >
-                                    السابق
+                                    متابعة للدفع
                                 </button>
-                            )}
-                            <button type="submit" className="btn-primary flex-1">
-                                {step === 3 ? 'تأكيد الطلب' : 'التالي'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                            </form>
+                        )}
 
-                {/* Order Summary */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">ملخص الطلب</h2>
+                        {/* Payment Step */}
+                        {step === 'payment' && (
+                            <div className="bg-white rounded-xl shadow-sm p-6">
+                                <h2 className="text-lg font-bold text-gray-900 mb-4">طريقة الدفع</h2>
 
-                        <div className="space-y-3 mb-4">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">المجموع الفرعي</span>
-                                <span className="font-bold">{subtotal.toFixed(2)} ر.س</span>
+                                <div className="space-y-3">
+                                    <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer ${paymentMethod === 'cod' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+                                        }`}>
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            checked={paymentMethod === 'cod'}
+                                            onChange={() => setPaymentMethod('cod')}
+                                            className="text-primary-600"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="font-medium">الدفع عند الاستلام</p>
+                                            <p className="text-sm text-gray-500">ادفع نقداً عند التوصيل</p>
+                                        </div>
+                                        <span className="text-2xl">💵</span>
+                                    </label>
+
+                                    <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer ${paymentMethod === 'card' ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+                                        }`}>
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            checked={paymentMethod === 'card'}
+                                            onChange={() => setPaymentMethod('card')}
+                                            className="text-primary-600"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="font-medium">بطاقة ائتمان</p>
+                                            <p className="text-sm text-gray-500">Visa, Mastercard, مدى</p>
+                                        </div>
+                                        <span className="text-2xl">💳</span>
+                                    </label>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button
+                                        onClick={() => setStep('address')}
+                                        className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+                                    >
+                                        رجوع
+                                    </button>
+                                    <button
+                                        onClick={handlePlaceOrder}
+                                        disabled={loading}
+                                        className="flex-1 py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 disabled:bg-gray-300"
+                                    >
+                                        {loading ? 'جاري الطلب...' : 'تأكيد الطلب'}
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">الشحن</span>
-                                <span className="text-green-500 font-bold">مجاني</span>
-                            </div>
-                        </div>
+                        )}
+                    </div>
 
-                        <div className="border-t pt-4">
-                            <div className="flex justify-between text-lg">
-                                <span className="font-bold">الإجمالي</span>
-                                <span className="font-bold text-primary-500">{total.toFixed(2)} ر.س</span>
+                    {/* Order Summary */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">ملخص الطلب</h2>
+
+                            <div className="space-y-3 text-sm max-h-60 overflow-y-auto">
+                                {items.map((item) => (
+                                    <div key={item.productId} className="flex justify-between">
+                                        <span className="text-gray-600">{item.name} × {item.quantity}</span>
+                                        <span>{(item.price * item.quantity).toFixed(2)} ر.س</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <hr className="my-4" />
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">المجموع الفرعي</span>
+                                    <span>{total.toFixed(2)} ر.س</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">الشحن</span>
+                                    <span className={shippingCost === 0 ? 'text-green-600' : ''}>
+                                        {shippingCost === 0 ? 'مجاني' : `${shippingCost} ر.س`}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <hr className="my-4" />
+
+                            <div className="flex justify-between text-lg font-bold">
+                                <span>الإجمالي</span>
+                                <span className="text-primary-600">{grandTotal.toFixed(2)} ر.س</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }

@@ -1,151 +1,188 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Trash2, Minus, Plus, ShoppingBag, ArrowLeft } from 'lucide-react'
+/**
+ * Storefront Cart Page
+ * صفحة السلة مع API
+ * 
+ * يجب وضعه في: storefront/app/cart/page.tsx
+ */
 
-// Mock cart items (will be replaced with state management)
-const initialCartItems = [
-    {
-        id: '1',
-        name_ar: 'آيفون 15 برو ماكس',
-        price: 4999,
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1696446701796-da61225697cc?w=200&h=200&fit=crop',
-    },
-    {
-        id: '4',
-        name_ar: 'ايربودز برو 2',
-        price: 999,
-        quantity: 2,
-        image: 'https://images.unsplash.com/photo-1606220588913-b3aacb4d2569?w=200&h=200&fit=crop',
-    },
-]
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
-    const [cartItems, setCartItems] = useState(initialCartItems)
+    const { items, total, itemCount, updateQuantity, removeFromCart, clearCart } = useCart();
+    const { isAuthenticated } = useAuth();
+    const router = useRouter();
 
-    const updateQuantity = (id: string, delta: number) => {
-        setCartItems(items =>
-            items.map(item =>
-                item.id === id
-                    ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-                    : item
-            )
-        )
+    const shippingCost = total >= 200 ? 0 : 25; // شحن مجاني للطلبات فوق 200
+    const grandTotal = total + shippingCost;
+
+    const handleCheckout = () => {
+        if (!isAuthenticated) {
+            router.push('/login?redirect=/checkout');
+            return;
+        }
+        router.push('/checkout');
+    };
+
+    if (items.length === 0) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <span className="text-8xl block mb-6">🛒</span>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">السلة فارغة</h2>
+                    <p className="text-gray-500 mb-6">أضف بعض المنتجات لتبدأ التسوق</p>
+                    <Link
+                        href="/products"
+                        className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                    >
+                        تصفح المنتجات
+                    </Link>
+                </div>
+            </div>
+        );
     }
-
-    const removeItem = (id: string) => {
-        setCartItems(items => items.filter(item => item.id !== id))
-    }
-
-    const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const shipping = subtotal > 200 ? 0 : 25
-    const total = subtotal + shipping
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">سلة التسوق</h1>
+        <div className="min-h-screen bg-gray-50 py-8">
+            <div className="max-w-7xl mx-auto px-4">
+                <div className="flex items-center justify-between mb-8">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        سلة التسوق ({itemCount} منتج)
+                    </h1>
+                    <button
+                        onClick={() => clearCart()}
+                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                    >
+                        إفراغ السلة
+                    </button>
+                </div>
 
-            {cartItems.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid lg:grid-cols-3 gap-8">
                     {/* Cart Items */}
                     <div className="lg:col-span-2 space-y-4">
-                        {cartItems.map((item) => (
+                        {items.map((item) => (
                             <div
-                                key={item.id}
-                                className="bg-white rounded-xl p-4 shadow-sm flex gap-4"
+                                key={item.productId}
+                                className="bg-white rounded-xl shadow-sm p-4 flex gap-4"
                             >
-                                <img
-                                    src={item.image}
-                                    alt={item.name_ar}
-                                    className="w-24 h-24 object-cover rounded-lg"
-                                />
-                                <div className="flex-grow">
-                                    <h3 className="font-bold text-gray-900 mb-1">{item.name_ar}</h3>
-                                    <p className="text-primary-500 font-bold">{item.price.toFixed(2)} ر.س</p>
+                                {/* Product Image */}
+                                <div className="w-24 h-24 relative flex-shrink-0 rounded-lg overflow-hidden">
+                                    {item.image ? (
+                                        <Image
+                                            src={item.image}
+                                            alt={item.name}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                            <span className="text-2xl">📦</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex flex-col items-end justify-between">
-                                    <button
-                                        onClick={() => removeItem(item.id)}
-                                        className="text-red-500 hover:text-red-600 p-2"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                    <div className="flex items-center border rounded-lg">
+
+                                {/* Product Info */}
+                                <div className="flex-1">
+                                    <h3 className="font-medium text-gray-900">{item.name}</h3>
+                                    <p className="text-primary-600 font-bold mt-1">
+                                        {item.price.toFixed(2)} ر.س
+                                    </p>
+
+                                    {/* Quantity Controls */}
+                                    <div className="flex items-center gap-3 mt-3">
                                         <button
-                                            onClick={() => updateQuantity(item.id, -1)}
-                                            className="p-2 hover:bg-gray-100"
+                                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold"
                                         >
-                                            <Minus className="w-4 h-4" />
+                                            -
                                         </button>
-                                        <span className="px-3 font-bold">{item.quantity}</span>
+                                        <span className="font-medium w-8 text-center">{item.quantity}</span>
                                         <button
-                                            onClick={() => updateQuantity(item.id, 1)}
-                                            className="p-2 hover:bg-gray-100"
+                                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold"
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            +
                                         </button>
                                     </div>
+                                </div>
+
+                                {/* Item Total & Remove */}
+                                <div className="text-left flex flex-col justify-between">
+                                    <p className="font-bold text-gray-900">
+                                        {(item.price * item.quantity).toFixed(2)} ر.س
+                                    </p>
+                                    <button
+                                        onClick={() => removeFromCart(item.productId)}
+                                        className="text-red-500 hover:text-red-600 text-sm"
+                                    >
+                                        حذف
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Summary */}
+                    {/* Order Summary */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">ملخص الطلب</h2>
+                        <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">ملخص الطلب</h2>
 
-                            <div className="space-y-3 mb-4">
+                            <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">المجموع الفرعي</span>
-                                    <span className="font-bold">{subtotal.toFixed(2)} ر.س</span>
+                                    <span className="text-gray-500">المجموع الفرعي</span>
+                                    <span className="font-medium">{total.toFixed(2)} ر.س</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">الشحن</span>
-                                    <span className={shipping === 0 ? 'text-green-500 font-bold' : 'font-bold'}>
-                                        {shipping === 0 ? 'مجاني' : `${shipping.toFixed(2)} ر.س`}
+                                    <span className="text-gray-500">الشحن</span>
+                                    <span className="font-medium">
+                                        {shippingCost === 0 ? (
+                                            <span className="text-green-600">مجاني</span>
+                                        ) : (
+                                            `${shippingCost.toFixed(2)} ر.س`
+                                        )}
                                     </span>
                                 </div>
-                                {shipping === 0 && (
-                                    <p className="text-green-500 text-sm">🎉 شحن مجاني للطلبات فوق 200 ر.س</p>
+                                {shippingCost > 0 && (
+                                    <p className="text-xs text-gray-400">
+                                        أضف {(200 - total).toFixed(2)} ر.س للحصول على شحن مجاني
+                                    </p>
                                 )}
-                            </div>
-
-                            <div className="border-t pt-4 mb-6">
-                                <div className="flex justify-between text-lg">
-                                    <span className="font-bold">الإجمالي</span>
-                                    <span className="font-bold text-primary-500">{total.toFixed(2)} ر.س</span>
+                                <hr />
+                                <div className="flex justify-between text-lg font-bold">
+                                    <span>الإجمالي</span>
+                                    <span className="text-primary-600">{grandTotal.toFixed(2)} ر.س</span>
                                 </div>
                             </div>
 
-                            <Link
-                                href="/checkout"
-                                className="block w-full bg-primary-500 text-white text-center py-4 rounded-xl 
-                         font-bold hover:bg-primary-600 transition"
+                            <button
+                                onClick={handleCheckout}
+                                className="w-full mt-6 py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 transition-colors"
                             >
                                 إتمام الشراء
-                            </Link>
+                            </button>
 
                             <Link
-                                href="/"
-                                className="flex items-center justify-center gap-2 mt-4 text-gray-600 hover:text-primary-500"
+                                href="/products"
+                                className="block text-center mt-4 text-primary-600 hover:underline text-sm"
                             >
-                                <ArrowLeft className="w-4 h-4" />
                                 متابعة التسوق
                             </Link>
+
+                            {/* Trust Badges */}
+                            <div className="mt-6 pt-6 border-t flex items-center justify-center gap-4 text-xs text-gray-500">
+                                <span>🔒 دفع آمن</span>
+                                <span>🚚 توصيل سريع</span>
+                                <span>↩️ إرجاع سهل</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            ) : (
-                <div className="text-center py-16">
-                    <ShoppingBag className="w-24 h-24 text-gray-300 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">السلة فارغة</h2>
-                    <p className="text-gray-500 mb-6">لم تضف أي منتجات للسلة بعد</p>
-                    <Link href="/" className="btn-primary">ابدأ التسوق</Link>
-                </div>
-            )}
+            </div>
         </div>
-    )
+    );
 }

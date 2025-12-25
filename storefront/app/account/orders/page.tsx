@@ -1,156 +1,154 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Package, Truck, CheckCircle, Clock, XCircle, ChevronLeft, Search, Filter } from 'lucide-react'
+/**
+ * Account Orders Page
+ * صفحة طلباتي
+ * 
+ * يجب وضعه في: storefront/app/account/orders/page.tsx
+ */
 
-const orders = [
-    {
-        id: 'ORD-12345',
-        date: '2024-12-23',
-        status: 'shipping',
-        total: 5998,
-        items: [
-            { name: 'آيفون 15 برو ماكس', quantity: 1, price: 4999, image: 'https://via.placeholder.com/80' },
-            { name: 'ايربودز برو 2', quantity: 1, price: 999, image: 'https://via.placeholder.com/80' },
-        ]
-    },
-    {
-        id: 'ORD-12344',
-        date: '2024-12-20',
-        status: 'delivered',
-        total: 1299,
-        items: [
-            { name: 'ساعة أبل الترا 2', quantity: 1, price: 1299, image: 'https://via.placeholder.com/80' },
-        ]
-    },
-    {
-        id: 'ORD-12343',
-        date: '2024-12-15',
-        status: 'delivered',
-        total: 2499,
-        items: [
-            { name: 'ماك بوك اير M2', quantity: 1, price: 2499, image: 'https://via.placeholder.com/80' },
-        ]
-    },
-    {
-        id: 'ORD-12342',
-        date: '2024-12-10',
-        status: 'cancelled',
-        total: 599,
-        items: [
-            { name: 'شاحن MagSafe', quantity: 2, price: 299, image: 'https://via.placeholder.com/80' },
-        ]
-    },
-]
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import Link from 'next/link';
 
-const statusConfig: Record<string, { color: string, icon: any, label: string }> = {
-    pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'قيد الانتظار' },
-    processing: { color: 'bg-blue-100 text-blue-700', icon: Package, label: 'جاري التجهيز' },
-    shipping: { color: 'bg-purple-100 text-purple-700', icon: Truck, label: 'جاري الشحن' },
-    delivered: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'تم التوصيل' },
-    cancelled: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'ملغي' },
+interface Order {
+    id: string;
+    order_number: string;
+    status: string;
+    total: number;
+    items_count: number;
+    created_at: string;
+    tracking_number?: string;
 }
 
-const tabs = [
-    { id: 'all', label: 'الكل' },
-    { id: 'shipping', label: 'جاري الشحن' },
-    { id: 'delivered', label: 'تم التوصيل' },
-    { id: 'cancelled', label: 'ملغي' },
-]
-
 export default function OrdersPage() {
-    const [activeTab, setActiveTab] = useState('all')
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const filteredOrders = activeTab === 'all' ? orders : orders.filter(o => o.status === activeTab)
+    useEffect(() => {
+        async function loadOrders() {
+            try {
+                const result = await api.orders.getAll();
+                if (result.data) {
+                    setOrders(result.data.orders || result.data);
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadOrders();
+    }, []);
+
+    const getStatusInfo = (status: string) => {
+        const statuses: Record<string, { label: string; color: string; icon: string }> = {
+            pending: { label: 'قيد الانتظار', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
+            confirmed: { label: 'تم التأكيد', color: 'bg-blue-100 text-blue-800', icon: '✅' },
+            processing: { label: 'قيد التجهيز', color: 'bg-indigo-100 text-indigo-800', icon: '📦' },
+            shipped: { label: 'تم الشحن', color: 'bg-purple-100 text-purple-800', icon: '🚚' },
+            delivered: { label: 'تم التوصيل', color: 'bg-green-100 text-green-800', icon: '🎉' },
+            cancelled: { label: 'ملغي', color: 'bg-red-100 text-red-800', icon: '❌' },
+        };
+        return statuses[status] || { label: status, color: 'bg-gray-100 text-gray-800', icon: '📋' };
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6">
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-white rounded-xl p-6 animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
-            <div className="container mx-auto px-4 max-w-4xl">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">طلباتي</h1>
-                        <p className="text-gray-500">{orders.length} طلب</p>
-                    </div>
-                    <Link href="/track-order" className="text-primary-600 text-sm hover:underline flex items-center gap-1">
-                        <Truck className="w-4 h-4" />
-                        تتبع طلب
-                    </Link>
-                </div>
+            <div className="max-w-4xl mx-auto px-4">
+                <h1 className="text-2xl font-bold text-gray-900 mb-6">طلباتي</h1>
 
-                {/* Tabs */}
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${activeTab === tab.id
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100'
-                                }`}
+                {orders.length === 0 ? (
+                    <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                        <span className="text-6xl block mb-4">📦</span>
+                        <h2 className="text-xl font-medium text-gray-900 mb-2">لا توجد طلبات</h2>
+                        <p className="text-gray-500 mb-6">لم تقم بأي طلبات بعد</p>
+                        <Link
+                            href="/products"
+                            className="inline-flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
                         >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Orders List */}
-                <div className="space-y-4">
-                    {filteredOrders.map((order) => {
-                        const status = statusConfig[order.status]
-                        const StatusIcon = status.icon
-                        return (
-                            <div key={order.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                                {/* Order Header */}
-                                <div className="p-4 border-b flex items-center justify-between bg-gray-50">
-                                    <div className="flex items-center gap-4">
-                                        <span className="font-mono font-bold text-primary-600">{order.id}</span>
-                                        <span className="text-sm text-gray-500">{order.date}</span>
-                                    </div>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${status.color}`}>
-                                        <StatusIcon className="w-3.5 h-3.5" />
-                                        {status.label}
-                                    </span>
-                                </div>
-
-                                {/* Items */}
-                                <div className="p-4">
-                                    {order.items.map((item, index) => (
-                                        <div key={index} className="flex items-center gap-4 mb-3 last:mb-0">
-                                            <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover bg-gray-100" />
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900">{item.name}</p>
-                                                <p className="text-sm text-gray-500">الكمية: {item.quantity}</p>
+                            ابدأ التسوق
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {orders.map((order) => {
+                            const statusInfo = getStatusInfo(order.status);
+                            return (
+                                <div
+                                    key={order.id}
+                                    className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-3">
+                                                <h3 className="font-bold text-gray-900">
+                                                    طلب #{order.order_number}
+                                                </h3>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                                                    {statusInfo.icon} {statusInfo.label}
+                                                </span>
                                             </div>
-                                            <p className="font-bold">{item.price} ر.س</p>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                {new Date(order.created_at).toLocaleDateString('ar-SA', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric',
+                                                })}
+                                            </p>
                                         </div>
-                                    ))}
-                                </div>
-
-                                {/* Footer */}
-                                <div className="p-4 border-t flex items-center justify-between bg-gray-50">
-                                    <div>
-                                        <span className="text-sm text-gray-500">الإجمالي: </span>
-                                        <span className="text-lg font-bold text-gray-900">{order.total} ر.س</span>
+                                        <div className="text-left">
+                                            <p className="font-bold text-primary-600">{order.total.toFixed(2)} ر.س</p>
+                                            <p className="text-sm text-gray-500">{order.items_count} منتج</p>
+                                        </div>
                                     </div>
-                                    <Link href={`/account/orders/${order.id}`} className="text-primary-600 text-sm font-medium hover:underline flex items-center gap-1">
-                                        تفاصيل الطلب
-                                        <ChevronLeft className="w-4 h-4" />
-                                    </Link>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
 
-                {filteredOrders.length === 0 && (
-                    <div className="text-center py-16">
-                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500">لا توجد طلبات</p>
+                                    {order.tracking_number && (
+                                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                            <p className="text-sm text-gray-600">
+                                                رقم التتبع: <span className="font-mono font-medium">{order.tracking_number}</span>
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 flex gap-3">
+                                        <Link
+                                            href={`/account/orders/${order.id}`}
+                                            className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700"
+                                        >
+                                            تفاصيل الطلب
+                                        </Link>
+                                        {order.status === 'shipped' && order.tracking_number && (
+                                            <Link
+                                                href={`/track-order?number=${order.tracking_number}`}
+                                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+                                            >
+                                                تتبع الشحنة
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
         </div>
-    )
+    );
 }
