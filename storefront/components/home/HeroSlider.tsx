@@ -3,55 +3,60 @@
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-interface Slide {
-    id: number
-    image: string
+interface Banner {
+    id: string
     title: string
     subtitle: string
-    buttonText: string
-    buttonLink: string
-    bgColor: string
+    image: string
+    link: string
+    bg_color: string
+    button_text: string
 }
 
-const slides: Slide[] = [
+interface HeroSliderProps {
+    banners?: Banner[]
+}
+
+const defaultSlides: Banner[] = [
     {
-        id: 1,
-        image: 'https://via.placeholder.com/800x400/DC2626/FFFFFF?text=عروض+العيد',
+        id: '1',
         title: 'عروض العيد الكبرى',
         subtitle: 'خصومات تصل حتى 50% على جميع المنتجات',
-        buttonText: 'تسوق الآن',
-        buttonLink: '/deals',
-        bgColor: 'bg-gradient-to-l from-primary-500 to-primary-600',
+        image: '',
+        link: '/deals',
+        bg_color: 'from-primary-500 to-primary-600',
+        button_text: 'تسوق الآن'
     },
     {
-        id: 2,
-        image: 'https://via.placeholder.com/800x400/F59E0B/FFFFFF?text=إلكترونيات',
+        id: '2',
         title: 'أحدث الإلكترونيات',
         subtitle: 'iPhone 15 Pro - متوفر الآن',
-        buttonText: 'اكتشف المزيد',
-        buttonLink: '/category/electronics',
-        bgColor: 'bg-gradient-to-l from-secondary-500 to-secondary-600',
+        image: '',
+        link: '/category/electronics',
+        bg_color: 'from-secondary-500 to-secondary-600',
+        button_text: 'اكتشف المزيد'
     },
     {
-        id: 3,
-        image: 'https://via.placeholder.com/800x400/059669/FFFFFF?text=شحن+مجاني',
+        id: '3',
         title: 'شحن مجاني',
         subtitle: 'على جميع الطلبات فوق 200 ر.س',
-        buttonText: 'ابدأ التسوق',
-        buttonLink: '/shop',
-        bgColor: 'bg-gradient-to-l from-green-500 to-green-600',
+        image: '',
+        link: '/shop',
+        bg_color: 'from-green-500 to-green-600',
+        button_text: 'ابدأ التسوق'
     },
 ]
 
-export default function HeroSlider() {
+export default function HeroSlider({ banners }: HeroSliderProps) {
     const [currentSlide, setCurrentSlide] = useState(0)
+    const slides = banners && banners.length > 0 ? banners : defaultSlides
 
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % slides.length)
         }, 5000)
         return () => clearInterval(timer)
-    }, [])
+    }, [slides.length])
 
     const nextSlide = () => {
         setCurrentSlide((prev) => (prev + 1) % slides.length)
@@ -71,7 +76,7 @@ export default function HeroSlider() {
                 {slides.map((slide) => (
                     <div
                         key={slide.id}
-                        className={`min-w-full h-64 md:h-96 ${slide.bgColor} relative`}
+                        className={`min-w-full h-64 md:h-96 bg-gradient-to-l ${slide.bg_color} relative`}
                     >
                         <div className="container mx-auto h-full flex items-center px-8 md:px-16">
                             <div className="max-w-lg text-white">
@@ -82,11 +87,11 @@ export default function HeroSlider() {
                                     {slide.subtitle}
                                 </p>
                                 <a
-                                    href={slide.buttonLink}
+                                    href={slide.link}
                                     className="inline-block bg-white text-gray-900 px-8 py-3 
                            rounded-lg font-bold hover:bg-gray-100 transition"
                                 >
-                                    {slide.buttonText}
+                                    {slide.button_text}
                                 </a>
                             </div>
                         </div>

@@ -1,121 +1,46 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import HeroSlider from '@/components/home/HeroSlider'
 import CategoryGrid from '@/components/home/CategoryGrid'
 import FlashDeals from '@/components/home/FlashDeals'
 import ProductCard from '@/components/product/ProductCard'
 import Link from 'next/link'
-import { Truck, Shield, Headphones, RotateCcw } from 'lucide-react'
+import { Truck, Shield, Headphones, RotateCcw, Loader2 } from 'lucide-react'
 
-// Mock products
-const newArrivals = [
-    {
-        id: '5',
-        name: 'MacBook Pro M3',
-        nameAr: 'ماك بوك برو M3',
-        price: 8499,
-        image: 'https://via.placeholder.com/300x300/333333/ffffff?text=MacBook',
-        category: 'إلكترونيات',
-        badge: 'new' as const,
-    },
-    {
-        id: '6',
-        name: 'Sony Headphones',
-        nameAr: 'سماعات سوني WH-1000XM5',
-        price: 1299,
-        image: 'https://via.placeholder.com/300x300/1a1a1a/ffffff?text=Sony',
-        category: 'إلكترونيات',
-        badge: 'new' as const,
-    },
-    {
-        id: '7',
-        name: 'Adidas Running',
-        nameAr: 'حذاء أديداس للجري',
-        price: 399,
-        image: 'https://via.placeholder.com/300x300/000000/ffffff?text=Adidas',
-        category: 'رياضة',
-        badge: 'new' as const,
-    },
-    {
-        id: '8',
-        name: 'Smart Watch',
-        nameAr: 'ساعة ذكية Galaxy Watch',
-        price: 999,
-        image: 'https://via.placeholder.com/300x300/1a1a1a/ffffff?text=Galaxy',
-        category: 'إلكترونيات',
-    },
-]
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://35.226.47.16:8000'
 
-const bestSellers = [
-    {
-        id: '9',
-        name: 'AirPods Pro',
-        nameAr: 'سماعات ايربودز برو 2',
-        price: 899,
-        comparePrice: 1099,
-        image: 'https://via.placeholder.com/300x300/f5f5f5/333333?text=AirPods',
-        category: 'إلكترونيات',
-        badge: 'hot' as const,
-        rating: 4.8,
-        reviewCount: 2540,
-    },
-    {
-        id: '10',
-        name: 'Dyson V15',
-        nameAr: 'مكنسة دايسون V15',
-        price: 2799,
-        image: 'https://via.placeholder.com/300x300/6B21A8/ffffff?text=Dyson',
-        category: 'المنزل',
-        badge: 'hot' as const,
-        rating: 4.9,
-        reviewCount: 890,
-    },
-    {
-        id: '11',
-        name: 'PS5 Console',
-        nameAr: 'جهاز بلايستيشن 5',
-        price: 2199,
-        image: 'https://via.placeholder.com/300x300/0070d1/ffffff?text=PS5',
-        category: 'ألعاب',
-        badge: 'hot' as const,
-        rating: 4.7,
-        reviewCount: 3200,
-    },
-    {
-        id: '12',
-        name: 'iPad Pro',
-        nameAr: 'آيباد برو 12.9 بوصة',
-        price: 4299,
-        image: 'https://via.placeholder.com/300x300/1a1a1a/ffffff?text=iPad',
-        category: 'إلكترونيات',
-        rating: 4.9,
-        reviewCount: 1850,
-    },
-]
+interface Product {
+    id: string
+    name: string
+    name_ar: string
+    slug: string
+    price: number
+    compare_price?: number
+    images: string[]
+    category: string
+    badge?: 'sale' | 'new' | 'hot'
+    rating?: number
+    reviews_count?: number
+}
 
-// Features
+interface HomepageData {
+    banners: any[]
+    categories: any[]
+    flash_deals: Product[]
+    flash_deals_ends_at: string
+    new_arrivals: Product[]
+    best_sellers: Product[]
+    featured_products: Product[]
+}
+
 const features = [
-    {
-        icon: Truck,
-        title: 'شحن سريع',
-        description: 'توصيل خلال 2-5 أيام',
-    },
-    {
-        icon: Shield,
-        title: 'ضمان الجودة',
-        description: 'منتجات أصلية 100%',
-    },
-    {
-        icon: RotateCcw,
-        title: 'استرجاع سهل',
-        description: 'استرجاع خلال 14 يوم',
-    },
-    {
-        icon: Headphones,
-        title: 'دعم متواصل',
-        description: 'خدمة عملاء 24/7',
-    },
+    { icon: Truck, title: 'شحن سريع', description: 'توصيل خلال 2-5 أيام' },
+    { icon: Shield, title: 'ضمان الجودة', description: 'منتجات أصلية 100%' },
+    { icon: RotateCcw, title: 'استرجاع سهل', description: 'استرجاع خلال 14 يوم' },
+    { icon: Headphones, title: 'دعم متواصل', description: 'خدمة عملاء 24/7' },
 ]
 
-// Brands
 const brands = [
     { name: 'Apple', logo: 'https://via.placeholder.com/120x60/ffffff/333333?text=Apple' },
     { name: 'Samsung', logo: 'https://via.placeholder.com/120x60/ffffff/1428A0?text=Samsung' },
@@ -126,11 +51,62 @@ const brands = [
 ]
 
 export default function HomePage() {
+    const [data, setData] = useState<HomepageData | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const res = await fetch(`${API_URL}/api/homepage`)
+                const json = await res.json()
+                if (json.success) {
+                    setData(json.data)
+                } else {
+                    setError('Failed to load data')
+                }
+            } catch (err) {
+                console.error('API Error:', err)
+                setError('Failed to connect to API')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [])
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary-500 mx-auto mb-4" />
+                    <p className="text-gray-500">جاري التحميل...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-500 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="btn-primary"
+                    >
+                        إعادة المحاولة
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="pb-8">
             {/* Hero Section */}
             <div className="container mx-auto px-4 py-6">
-                <HeroSlider />
+                <HeroSlider banners={data?.banners} />
             </div>
 
             {/* Features Bar */}
@@ -154,10 +130,10 @@ export default function HomePage() {
 
             <div className="container mx-auto px-4">
                 {/* Categories */}
-                <CategoryGrid />
+                <CategoryGrid categories={data?.categories} />
 
                 {/* Flash Deals */}
-                <FlashDeals />
+                <FlashDeals products={data?.flash_deals} endsAt={data?.flash_deals_ends_at} />
 
                 {/* Banner */}
                 <div className="my-8 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -182,19 +158,33 @@ export default function HomePage() {
                 </div>
 
                 {/* New Arrivals */}
-                <section className="py-8">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">وصل حديثاً</h2>
-                        <Link href="/new" className="text-primary-500 hover:text-primary-600 font-medium">
-                            عرض الكل ←
-                        </Link>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                        {newArrivals.map((product) => (
-                            <ProductCard key={product.id} {...product} />
-                        ))}
-                    </div>
-                </section>
+                {data?.new_arrivals && data.new_arrivals.length > 0 && (
+                    <section className="py-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900">وصل حديثاً</h2>
+                            <Link href="/new" className="text-primary-500 hover:text-primary-600 font-medium">
+                                عرض الكل ←
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                            {data.new_arrivals.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    id={product.id}
+                                    name={product.name}
+                                    nameAr={product.name_ar}
+                                    price={product.price}
+                                    comparePrice={product.compare_price}
+                                    image={product.images?.[0] || ''}
+                                    category={product.category}
+                                    badge={product.badge}
+                                    rating={product.rating}
+                                    reviewCount={product.reviews_count}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {/* Brands */}
                 <section className="py-8">
@@ -213,19 +203,33 @@ export default function HomePage() {
                 </section>
 
                 {/* Best Sellers */}
-                <section className="py-8">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">🔥 الأكثر مبيعاً</h2>
-                        <Link href="/best-sellers" className="text-primary-500 hover:text-primary-600 font-medium">
-                            عرض الكل ←
-                        </Link>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                        {bestSellers.map((product) => (
-                            <ProductCard key={product.id} {...product} />
-                        ))}
-                    </div>
-                </section>
+                {data?.best_sellers && data.best_sellers.length > 0 && (
+                    <section className="py-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900">🔥 الأكثر مبيعاً</h2>
+                            <Link href="/best-sellers" className="text-primary-500 hover:text-primary-600 font-medium">
+                                عرض الكل ←
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                            {data.best_sellers.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    id={product.id}
+                                    name={product.name}
+                                    nameAr={product.name_ar}
+                                    price={product.price}
+                                    comparePrice={product.compare_price}
+                                    image={product.images?.[0] || ''}
+                                    category={product.category}
+                                    badge={product.badge}
+                                    rating={product.rating}
+                                    reviewCount={product.reviews_count}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
             </div>
         </div>
     )

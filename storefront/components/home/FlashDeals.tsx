@@ -5,51 +5,25 @@ import Link from 'next/link'
 import ProductCard from '../product/ProductCard'
 import { Clock } from 'lucide-react'
 
-// Mock products for flash deals
-const flashDealProducts = [
-    {
-        id: '1',
-        name: 'iPhone 15 Pro Max',
-        nameAr: 'آيفون 15 برو ماكس',
-        price: 4499,
-        comparePrice: 5999,
-        image: 'https://via.placeholder.com/300x300/1a1a1a/ffffff?text=iPhone+15',
-        category: 'إلكترونيات',
-        badge: 'sale' as const,
-    },
-    {
-        id: '2',
-        name: 'Samsung TV',
-        nameAr: 'تلفزيون سامسونج 65 بوصة',
-        price: 2999,
-        comparePrice: 4499,
-        image: 'https://via.placeholder.com/300x300/0a0a0a/ffffff?text=TV',
-        category: 'إلكترونيات',
-        badge: 'sale' as const,
-    },
-    {
-        id: '3',
-        name: 'Nike Air Max',
-        nameAr: 'حذاء نايك اير ماكس',
-        price: 499,
-        comparePrice: 799,
-        image: 'https://via.placeholder.com/300x300/ff5722/ffffff?text=Nike',
-        category: 'رياضة',
-        badge: 'sale' as const,
-    },
-    {
-        id: '4',
-        name: 'Apple Watch',
-        nameAr: 'ساعة أبل ووتش سيريس 9',
-        price: 1599,
-        comparePrice: 1999,
-        image: 'https://via.placeholder.com/300x300/2196F3/ffffff?text=Watch',
-        category: 'إلكترونيات',
-        badge: 'sale' as const,
-    },
-]
+interface Product {
+    id: string
+    name: string
+    name_ar: string
+    price: number
+    compare_price?: number
+    images: string[]
+    category: string
+    badge?: 'sale' | 'new' | 'hot'
+    rating?: number
+    reviews_count?: number
+}
 
-export default function FlashDeals() {
+interface FlashDealsProps {
+    products?: Product[]
+    endsAt?: string
+}
+
+export default function FlashDeals({ products, endsAt }: FlashDealsProps) {
     const [timeLeft, setTimeLeft] = useState({
         hours: 5,
         minutes: 30,
@@ -57,20 +31,47 @@ export default function FlashDeals() {
     })
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev.seconds > 0) {
-                    return { ...prev, seconds: prev.seconds - 1 }
-                } else if (prev.minutes > 0) {
-                    return { ...prev, minutes: prev.minutes - 1, seconds: 59 }
-                } else if (prev.hours > 0) {
-                    return { hours: prev.hours - 1, minutes: 59, seconds: 59 }
+        const calculateTimeLeft = () => {
+            if (endsAt) {
+                const end = new Date(endsAt).getTime()
+                const now = Date.now()
+                const diff = end - now
+
+                if (diff > 0) {
+                    const hours = Math.floor(diff / (1000 * 60 * 60))
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+                    setTimeLeft({ hours, minutes, seconds })
                 }
-                return prev
-            })
-        }, 1000)
+            }
+        }
+
+        calculateTimeLeft()
+        const timer = setInterval(calculateTimeLeft, 1000)
         return () => clearInterval(timer)
-    }, [])
+    }, [endsAt])
+
+    useEffect(() => {
+        if (!endsAt) {
+            const timer = setInterval(() => {
+                setTimeLeft(prev => {
+                    if (prev.seconds > 0) {
+                        return { ...prev, seconds: prev.seconds - 1 }
+                    } else if (prev.minutes > 0) {
+                        return { ...prev, minutes: prev.minutes - 1, seconds: 59 }
+                    } else if (prev.hours > 0) {
+                        return { hours: prev.hours - 1, minutes: 59, seconds: 59 }
+                    }
+                    return prev
+                })
+            }, 1000)
+            return () => clearInterval(timer)
+        }
+    }, [endsAt])
+
+    if (!products || products.length === 0) {
+        return null
+    }
 
     return (
         <section className="py-8">
@@ -111,8 +112,20 @@ export default function FlashDeals() {
 
             {/* Products Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                {flashDealProducts.map((product) => (
-                    <ProductCard key={product.id} {...product} />
+                {products.map((product) => (
+                    <ProductCard
+                        key={product.id}
+                        id={product.id}
+                        name={product.name}
+                        nameAr={product.name_ar}
+                        price={product.price}
+                        comparePrice={product.compare_price}
+                        image={product.images?.[0] || ''}
+                        category={product.category}
+                        badge={product.badge}
+                        rating={product.rating}
+                        reviewCount={product.reviews_count}
+                    />
                 ))}
             </div>
         </section>
