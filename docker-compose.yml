@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: coreflex-db
+    environment:
+      POSTGRES_DB: coreflex
+      POSTGRES_USER: coreflex
+      POSTGRES_PASSWORD: coreflex_secret_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coreflex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: coreflex-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # Backend API (Node.js/Express)
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: coreflex-api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://coreflex:coreflex_secret_2024@postgres:5432/coreflex
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your_jwt_secret_key_change_in_production
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # Landing Page
+  landing:
+    build:
+      context: ./landing
+      dockerfile: Dockerfile
+    container_name: coreflex-landing
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Storefront
+  storefront:
+    build:
+      context: ./storefront
+      dockerfile: Dockerfile
+    container_name: coreflex-storefront
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    ports:
+      - "3001:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Admin Panel
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: coreflex-admin
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    ports:
+      - "3002:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: coreflex-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - api
+      - landing
+      - storefront
+      - admin
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
