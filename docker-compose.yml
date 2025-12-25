@@ -76,5 +76,19 @@ services:
       - api
     restart: unless-stopped
 
+  # Admin Dashboard (لوحة التحكم)
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: coreflex-admin
+    environment:
+      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   postgres_data:

@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
+body {
+    font-family: 'Tajawal', sans-serif;
+    direction: rtl;
+    text-align: right;
+}
+
+@layer components {
+    .sidebar-item {
+        @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all duration-200;
+    }
+
+    .sidebar-item.active {
+        @apply bg-primary-50 text-primary-600 font-medium;
+    }
+
+    .card {
+        @apply bg-white rounded-xl shadow-sm border border-gray-100;
+    }
+
+    .stat-card {
+        @apply bg-white rounded-xl p-6 shadow-sm border border-gray-100;
+    }
+
+    .btn-primary {
+        @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors;
+    }
+
+    .btn-secondary {
+        @apply bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors;
+    }
+
+    .input-field {
+        @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition;
+    }
+
+    .table-header {
+        @apply bg-gray-50 text-gray-600 text-sm font-medium uppercase;
+    }
+
+    .table-row {
+        @apply border-b border-gray-100 hover:bg-gray-50 transition;
+    }
+}
