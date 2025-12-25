@@ -10,9 +10,11 @@ const categoryRoutes = require('./routes/categories');
 const orderRoutes = require('./routes/orders');
 const cartRoutes = require('./routes/cart');
 const adminRoutes = require('./routes/admin');
+const superAdminRoutes = require('./routes/superadmin');
 
 // Import middleware
 const { extractTenant } = require('./middleware/tenant');
+const { apiLimiter, authLimiter, securityHeaders, sanitizeInput } = require('./middleware/security');
 
 // Import database
 const { pool, query } = require('./db');
@@ -20,9 +22,13 @@ const { pool, query } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// ============ Middleware ============
+// ============ Global Security Middleware ============
 app.use(cors());
 app.use(express.json());
+app.use(securityHeaders);
+app.use(sanitizeInput);
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
 
 // ============ Health Check ============
 app.get('/health', (req, res) => {
@@ -36,7 +42,7 @@ app.get('/api/health', async (req, res) => {
         res.json({
             status: 'ok',
             service: 'coreflex-api',
-            version: '2.0.0',
+            version: '2.1.0-secure',
             database: 'connected',
             timestamp: dbResult.rows[0].now
         });
@@ -44,7 +50,7 @@ app.get('/api/health', async (req, res) => {
         res.json({
             status: 'ok',
             service: 'coreflex-api',
-            version: '2.0.0',
+            version: '2.1.0-secure',
             database: 'disconnected',
             error: error.message
         });
@@ -58,6 +64,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/superadmin', superAdminRoutes);
 
 // ============ Homepage Data (Combined) ============
 app.get('/api/homepage', extractTenant, async (req, res) => {
