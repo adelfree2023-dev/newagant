@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Search, Loader2 } from 'lucide-react'
@@ -21,7 +21,7 @@ interface Product {
     reviews_count?: number
 }
 
-export default function SearchPage() {
+function SearchContent() {
     const searchParams = useSearchParams()
     const query = searchParams.get('q') || ''
     const [results, setResults] = useState<Product[]>([])
@@ -60,7 +60,7 @@ export default function SearchPage() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <>
             {/* Search Box */}
             <div className="max-w-2xl mx-auto mb-8">
                 <form onSubmit={handleSearch} className="relative">
@@ -90,7 +90,7 @@ export default function SearchPage() {
             ) : query ? (
                 <>
                     <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                        نتائج البحث عن "{query}" ({results.length} نتيجة)
+                        نتائج البحث عن &quot;{query}&quot; ({results.length} نتيجة)
                     </h1>
 
                     {results.length > 0 ? (
@@ -124,6 +124,20 @@ export default function SearchPage() {
                     <p className="text-gray-500 text-lg">ابحث عن المنتجات التي تريدها</p>
                 </div>
             )}
+        </>
+    )
+}
+
+export default function SearchPage() {
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <Suspense fallback={
+                <div className="flex justify-center py-16">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary-500" />
+                </div>
+            }>
+                <SearchContent />
+            </Suspense>
         </div>
     )
 }
