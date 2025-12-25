@@ -1,263 +1,320 @@
+/**
+ * CoreFlex Security Middleware
+ * الإصدار: 2.1.0-secure
+ * 
+ * ملف الحماية المتقدمة - يجب وضعه في: api/middleware/security.js
+ */
+
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+const mongoSanitize = require('express-mongo-sanitize');
 
-// ============ Storage for Rate Limiting ============
-const loginAttempts = new Map(); // IP -> { count, lastAttempt, blockUntil }
-const circuitBreaker = { triggered: false, blockedIPs: new Set() };
+// ============================================
+// RATE LIMITING CONFIGURATIONS
+// ============================================
 
-// ============ ADVANCED Rate Limiters ============
+// Store for tracking failed attempts
+const failedAttempts = new Map();
+const blockedIPs = new Map();
 
-// General API rate limiter
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { success: false, error: 'Too many requests, please try again later' },
+/**
+ * Get failed attempts count for an IP
+ */
+function getFailures(ip) {
+    const record = failedAttempts.get(ip);
+    if (!record) return 0;
+
+    // Reset if more than 15 minutes passed
+    if (Date.now() - record.lastAttempt > 15 * 60 * 1000) {
+        failedAttempts.delete(ip);
+        return 0;
+    }
+
+    return record.count;
+}
+
+/**
+ * Record a failed attempt
+ */
+function recordFailure(ip) {
+    const record = failedAttempts.get(ip) || { count: 0, lastAttempt: 0 };
+    record.count++;
+    record.lastAttempt = Date.now();
+    failedAttempts.set(ip, record);
+
+    // Auto-block after 10 failures
+    if (record.count >= 10) {
+        blockIP(ip, 60 * 60 * 1000); // 1 hour
+    }
+}
+
+/**
+ * Block an IP address
+ */
+function blockIP(ip, duration = 60 * 60 * 1000) {
+    blockedIPs.set(ip, Date.now() + duration);
+    console.log(`[SECURITY] IP blocked: ${ip} for ${duration / 1000}s`);
+}
+
+/**
+ * Check if IP is blocked
+ */
+function isBlocked(ip) {
+    const blockedUntil = blockedIPs.get(ip);
+    if (!blockedUntil) return false;
+
+    if (Date.now() > blockedUntil) {
+        blockedIPs.delete(ip);
+        return false;
+    }
+
+    return true;
+}
+
+// ============================================
+// GENERAL API RATE LIMITER
+// ============================================
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: (req) => {
+        const failures = getFailures(req.ip);
+        if (failures > 5) return 10;  // Reduced limit
+        if (failures > 3) return 50;  // Slightly reduced
+        return 100; // Normal limit
+    },
+    message: {
+        error: 'Too many requests. Please try again later.',
+        retryAfter: 15 * 60, // seconds
+    },
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: (req) => req.ip,
+    handler: (req, res) => {
+        recordFailure(req.ip);
+        res.status(429).json({
+            error: 'Too many requests',
+            retryAfter: Math.pow(4, getFailures(req.ip)), // Exponential backoff info
+        });
+    },
 });
 
-// Exponential Backoff Rate Limiter for Auth
-const exponentialBackoffLimiter = (req, res, next) => {
-    const ip = req.ip || req.connection.remoteAddress;
-    const now = Date.now();
+// ============================================
+// AUTH RATE LIMITER (Stricter)
+// ============================================
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 attempts per window
+    message: {
+        error: 'Too many login attempts. Please try again later.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip,
+    handler: (req, res) => {
+        recordFailure(req.ip);
+        const failures = getFailures(req.ip);
+        const delay = Math.pow(4, Math.min(failures, 5)); // 4^n seconds, max 4^5 = 1024s
 
-    if (!loginAttempts.has(ip)) {
-        loginAttempts.set(ip, { count: 0, lastAttempt: now, blockUntil: 0 });
-    }
+        res.status(429).json({
+            error: 'Too many login attempts',
+            retryAfter: delay,
+            message: `Please wait ${delay} seconds before trying again.`,
+        });
+    },
+});
 
-    const attempt = loginAttempts.get(ip);
+// ============================================
+// ADMIN RATE LIMITER
+// ============================================
+const adminLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 100,
+    message: {
+        error: 'Too many admin requests.',
+    },
+});
 
-    // Check if blocked
-    if (attempt.blockUntil > now) {
-        const waitSeconds = Math.ceil((attempt.blockUntil - now) / 1000);
-        console.warn(`🚫 Blocked IP ${ip}: must wait ${waitSeconds}s`);
-        return res.status(429).json({
-            success: false,
-            error: `Too many attempts. Wait ${waitSeconds} seconds.`,
-            retryAfter: waitSeconds
+// ============================================
+// CIRCUIT BREAKER MIDDLEWARE
+// ============================================
+const circuitBreaker = (req, res, next) => {
+    if (isBlocked(req.ip)) {
+        return res.status(403).json({
+            error: 'Access temporarily blocked',
+            message: 'Your IP has been temporarily blocked due to suspicious activity.',
         });
     }
-
-    // Reset if last attempt was > 30 minutes ago
-    if (now - attempt.lastAttempt > 30 * 60 * 1000) {
-        attempt.count = 0;
-    }
-
-    attempt.count++;
-    attempt.lastAttempt = now;
-
-    // Exponential backoff: 1s, 4s, 16s, 64s, 256s, 1024s...
-    if (attempt.count > 3) {
-        const backoffTime = Math.pow(4, attempt.count - 3) * 1000;
-        attempt.blockUntil = now + Math.min(backoffTime, 30 * 60 * 1000); // Max 30 min
-        console.warn(`⚠️ IP ${ip} blocked for ${backoffTime / 1000}s after ${attempt.count} attempts`);
-    }
-
-    loginAttempts.set(ip, attempt);
-
-    // Clear old entries every hour
-    if (loginAttempts.size > 10000) {
-        for (const [key, val] of loginAttempts) {
-            if (now - val.lastAttempt > 60 * 60 * 1000) {
-                loginAttempts.delete(key);
-            }
-        }
-    }
-
     next();
 };
 
-// Reset login attempts on successful login
-const resetLoginAttempts = (ip) => {
-    loginAttempts.delete(ip);
-};
-
-// ============ Circuit Breaker ============
-const circuitBreakerMiddleware = (req, res, next) => {
-    const ip = req.ip || req.connection.remoteAddress;
-
-    // Check if IP is permanently blocked
-    if (circuitBreaker.blockedIPs.has(ip)) {
-        console.error(`🚨 CIRCUIT BREAKER: Blocked IP ${ip} tried to access`);
-        return res.status(403).json({ success: false, error: 'Access permanently denied' });
-    }
-
-    // Check global circuit breaker
-    if (circuitBreaker.triggered) {
-        // Only allow whitelisted IPs during circuit break
-        const whitelist = ['127.0.0.1', '::1', '35.226.47.16'];
-        if (!whitelist.some(w => ip.includes(w))) {
-            return res.status(503).json({ success: false, error: 'Service temporarily unavailable' });
-        }
-    }
-
-    next();
-};
-
-// Trigger circuit breaker
-const triggerCircuitBreaker = (ip, reason) => {
-    circuitBreaker.blockedIPs.add(ip);
-    console.error(`🚨 CIRCUIT BREAKER TRIGGERED: ${ip} - ${reason}`);
-
-    // Auto-release after 1 hour
-    setTimeout(() => {
-        circuitBreaker.blockedIPs.delete(ip);
-    }, 60 * 60 * 1000);
-};
-
-// ============ Honey Pot Detection ============
-const honeyPotDetection = (req, res, next) => {
-    const ip = req.ip || req.connection.remoteAddress;
-
+// ============================================
+// HONEYPOT DETECTION
+// ============================================
+const honeypotDetection = (req, res, next) => {
     // Check for honeypot fields (should be empty)
-    const honeyPotFields = ['_hp_email', '_hp_captcha', 'website', 'url', 'fax'];
-    for (const field of honeyPotFields) {
-        if (req.body[field]) {
-            console.error(`🍯 HONEYPOT TRIGGERED: ${ip} filled hidden field "${field}"`);
-            triggerCircuitBreaker(ip, 'Honeypot triggered');
-            return res.status(403).json({ success: false, error: 'Access denied' });
-        }
-    }
+    const honeypotFields = ['hp_email', 'hp_name', 'website_url', 'fax_number'];
 
-    next();
-};
+    for (const field of honeypotFields) {
+        if (req.body && req.body[field]) {
+            // Bot detected!
+            blockIP(req.ip, 24 * 60 * 60 * 1000); // Block for 24 hours
+            console.log(`[HONEYPOT] Bot detected from IP: ${req.ip}`);
 
-// ============ IP Whitelist ============
-const SUPER_ADMIN_ALLOWED_IPS = process.env.SUPER_ADMIN_IPS ?
-    process.env.SUPER_ADMIN_IPS.split(',') :
-    ['127.0.0.1', '::1', '35.226.47.16'];
-
-const ipWhitelist = (allowedIPs) => (req, res, next) => {
-    const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0];
-    const isAllowed = allowedIPs.some(ip => clientIP.includes(ip));
-
-    if (!isAllowed) {
-        console.warn(`🚨 Blocked IP: ${clientIP} tried to access protected route`);
-        return res.status(403).json({ success: false, error: 'Access denied from this IP' });
-    }
-    next();
-};
-
-const superAdminIPCheck = ipWhitelist(SUPER_ADMIN_ALLOWED_IPS);
-
-// ============ Session Timeout ============
-const sessionTimeout = (timeoutMinutes) => (req, res, next) => {
-    if (req.user?.iat) {
-        const tokenAge = (Date.now() / 1000) - req.user.iat;
-        const maxAge = timeoutMinutes * 60;
-
-        if (tokenAge > maxAge) {
-            return res.status(401).json({
-                success: false,
-                error: 'Session expired',
-                code: 'SESSION_EXPIRED'
+            return res.status(403).json({
+                error: 'Request blocked',
             });
         }
     }
+
     next();
 };
 
-const adminSessionCheck = sessionTimeout(30);
-const superAdminSessionCheck = sessionTimeout(15);
+// ============================================
+// SESSION TIMEOUT MIDDLEWARE
+// ============================================
+const sessionTimeout = {
+    admin: 30 * 60 * 1000,      // 30 minutes for admin
+    superadmin: 15 * 60 * 1000, // 15 minutes for superadmin
+    customer: 7 * 24 * 60 * 60 * 1000, // 7 days for customers
+};
 
-// ============ Advanced Audit Logging ============
-const auditLog = async (req, res, next) => {
-    const originalSend = res.send;
-    const startTime = Date.now();
-
-    res.send = function (body) {
-        const duration = Date.now() - startTime;
-
-        if (req.user && ['tenant_admin', 'super_admin'].includes(req.user.role)) {
-            const logEntry = {
-                timestamp: new Date().toISOString(),
-                user: req.user.email,
-                role: req.user.role,
-                action: `${req.method} ${req.originalUrl}`,
-                ip: req.ip,
-                userAgent: req.headers['user-agent']?.substring(0, 100),
-                status: res.statusCode,
-                duration: `${duration}ms`
-            };
-
-            // Color-coded logging
-            const color = res.statusCode >= 400 ? '\x1b[31m' : '\x1b[32m';
-            console.log(`${color}📝 AUDIT: ${logEntry.user} | ${logEntry.action} | ${logEntry.status} | ${logEntry.duration}\x1b[0m`);
+const checkSessionTimeout = (role = 'customer') => {
+    return (req, res, next) => {
+        if (!req.session || !req.session.lastActivity) {
+            return next();
         }
 
-        return originalSend.call(this, body);
+        const timeout = sessionTimeout[role] || sessionTimeout.customer;
+        const timeSinceActivity = Date.now() - req.session.lastActivity;
+
+        if (timeSinceActivity > timeout) {
+            req.session.destroy();
+            return res.status(401).json({
+                error: 'Session expired',
+                message: 'Your session has expired. Please login again.',
+            });
+        }
+
+        // Update last activity
+        req.session.lastActivity = Date.now();
+        next();
     };
-    next();
 };
 
-// ============ Security Headers (Advanced) ============
-const securityHeaders = (req, res, next) => {
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;");
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    next();
-};
+// ============================================
+// SECURITY HEADERS (using Helmet)
+// ============================================
+const securityHeaders = helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            connectSrc: ["'self'", "https://api.coreflex.io", "wss:"],
+            frameSrc: ["'none'"],
+            objectSrc: ["'none'"],
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+});
 
-// ============ Input Sanitization (Enhanced) ============
-const sanitizeInput = (req, res, next) => {
-    const dangerous = /(<script|javascript:|onclick|onerror|onload)/gi;
+// ============================================
+// INPUT SANITIZATION
+// ============================================
+const inputSanitization = [
+    xss(), // Prevent XSS attacks
+    hpp(), // Prevent HTTP Parameter Pollution
+    mongoSanitize(), // Prevent NoSQL injection
+];
 
-    const sanitize = (obj) => {
-        if (typeof obj === 'string') {
-            if (dangerous.test(obj)) {
-                console.warn(`⚠️ XSS attempt blocked from ${req.ip}`);
-                return obj.replace(dangerous, '');
-            }
-            return obj.replace(/[;'"\\]/g, '');
+// ============================================
+// IP WHITELIST FOR ADMIN (Optional)
+// ============================================
+const ipWhitelist = (allowedIPs = []) => {
+    return (req, res, next) => {
+        if (allowedIPs.length === 0) {
+            return next(); // No whitelist configured
         }
-        if (typeof obj === 'object' && obj !== null) {
-            for (const key in obj) {
-                obj[key] = sanitize(obj[key]);
-            }
+
+        const clientIP = req.ip || req.connection.remoteAddress;
+
+        if (!allowedIPs.includes(clientIP)) {
+            console.log(`[SECURITY] Blocked non-whitelisted IP: ${clientIP}`);
+            return res.status(403).json({
+                error: 'Access denied',
+            });
         }
-        return obj;
+
+        next();
     };
-
-    if (req.body) req.body = sanitize(req.body);
-    if (req.query) req.query = sanitize(req.query);
-    next();
 };
 
-// ============ HttpOnly Cookie Helper ============
-const setAuthCookie = (res, token) => {
-    res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+// ============================================
+// AUDIT LOGGING
+// ============================================
+const auditLog = (action) => {
+    return (req, res, next) => {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: action,
+            ip: req.ip,
+            userId: req.user?.id || 'anonymous',
+            userAgent: req.headers['user-agent'],
+            method: req.method,
+            path: req.path,
+            body: req.method !== 'GET' ? sanitizeBody(req.body) : undefined,
+        };
+
+        // Log to console (replace with proper logging service)
+        console.log('[AUDIT]', JSON.stringify(logEntry));
+
+        // You can also save to database here
+        // await AuditLog.create(logEntry);
+
+        next();
+    };
 };
 
-const clearAuthCookie = (res) => {
-    res.clearCookie('auth_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-    });
-};
+function sanitizeBody(body) {
+    if (!body) return undefined;
 
+    const sanitized = { ...body };
+    // Remove sensitive fields
+    delete sanitized.password;
+    delete sanitized.currentPassword;
+    delete sanitized.newPassword;
+    delete sanitized.token;
+    delete sanitized.secret;
+
+    return sanitized;
+}
+
+// ============================================
+// EXPORTS
+// ============================================
 module.exports = {
-    apiLimiter,
-    exponentialBackoffLimiter,
-    resetLoginAttempts,
-    circuitBreakerMiddleware,
-    triggerCircuitBreaker,
-    honeyPotDetection,
-    ipWhitelist,
-    superAdminIPCheck,
-    adminSessionCheck,
-    superAdminSessionCheck,
-    auditLog,
+    // Rate limiters
+    generalLimiter,
+    authLimiter,
+    adminLimiter,
+
+    // Security middleware
+    circuitBreaker,
+    honeypotDetection,
+    checkSessionTimeout,
     securityHeaders,
-    sanitizeInput,
-    setAuthCookie,
-    clearAuthCookie
+    inputSanitization,
+    ipWhitelist,
+    auditLog,
+
+    // Helper functions
+    blockIP,
+    isBlocked,
+    getFailures,
+    recordFailure,
 };

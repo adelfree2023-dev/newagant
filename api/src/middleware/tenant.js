@@ -1,80 +1,327 @@
-const Tenant = require('../models/Tenant');
+/**
+ * CoreFlex Multi-Tenancy Middleware
+ * الإصدار: 2.1.0-saas
+ * 
+ * ميدلوير تعدد المستأجرين - يجب وضعه في: api/middleware/tenant.js
+ * 
+ * يضمن عزل البيانات بين التجار (Tenant Isolation)
+ */
 
-// ============ Tenant Middleware ============
+const db = require('../db');
 
-// Default demo tenant ID
-const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+// Configuration
+const TENANT_HEADER = 'X-Tenant-ID';
+const ALLOWED_SUBDOMAINS = ['www', 'api', 'admin', 'app'];
 
-// Extract tenant from request
-const extractTenant = async (req, res, next) => {
+// ============================================
+// TENANT EXTRACTION
+// ============================================
+
+/**
+ * Extract tenant from subdomain
+ * Example: store1.coreflex.io -> store1
+ */
+function extractTenantFromHost(host) {
+    if (!host) return null;
+
+    // Remove port
+    const hostname = host.split(':')[0];
+
+    // Get subdomain
+    const parts = hostname.split('.');
+
+    if (parts.length < 3) {
+        return null; // No subdomain
+    }
+
+    const subdomain = parts[0];
+
+    // Skip system subdomains
+    if (ALLOWED_SUBDOMAINS.includes(subdomain)) {
+        return null;
+    }
+
+    return subdomain;
+}
+
+/**
+ * Extract tenant from custom domain
+ * Lookup in database
+ */
+async function extractTenantFromCustomDomain(host) {
+    if (!host) return null;
+
+    const hostname = host.split(':')[0];
+
     try {
-        // 1. Check header first
-        let tenantId = req.headers['x-tenant-id'];
+        const result = await db.query(
+            'SELECT id, slug FROM tenants WHERE custom_domain = $1 AND status = $2',
+            [hostname, 'active']
+        );
 
-        // 2. Check subdomain from host
-        if (!tenantId) {
-            const host = req.headers.host || '';
-            const subdomain = host.split('.')[0];
+        if (result.rows.length > 0) {
+            return result.rows[0];
+        }
+    } catch (error) {
+        console.error('Error looking up custom domain:', error);
+    }
 
-            if (subdomain && subdomain !== 'localhost' && subdomain !== 'api') {
-                const tenant = await Tenant.findBySubdomain(subdomain);
-                if (tenant) {
-                    tenantId = tenant.id;
-                }
+    return null;
+}
+
+// ============================================
+// TENANT MIDDLEWARE
+// ============================================
+
+/**
+ * Main tenant middleware
+ * Extracts tenant from request and attaches to req object
+ */
+async function tenantMiddleware(req, res, next) {
+    try {
+        let tenant = null;
+
+        // 1. Check header (for API calls)
+        const headerTenant = req.headers[TENANT_HEADER.toLowerCase()];
+        if (headerTenant) {
+            tenant = await getTenantById(headerTenant);
+        }
+
+        // 2. Check subdomain
+        if (!tenant) {
+            const slug = extractTenantFromHost(req.headers.host);
+            if (slug) {
+                tenant = await getTenantBySlug(slug);
             }
         }
 
-        // 3. Check query param
-        if (!tenantId && req.query.tenant_id) {
-            tenantId = req.query.tenant_id;
-        }
-
-        // 4. Get from authenticated user
-        if (!tenantId && req.user?.tenant_id) {
-            tenantId = req.user.tenant_id;
-        }
-
-        // 5. Use default tenant for demo
-        if (!tenantId) {
-            tenantId = DEFAULT_TENANT_ID;
-        }
-
-        req.tenant_id = tenantId;
-        next();
-    } catch (error) {
-        console.error('Tenant extraction error:', error);
-        req.tenant_id = DEFAULT_TENANT_ID;
-        next();
-    }
-};
-
-// Require valid tenant
-const requireTenant = async (req, res, next) => {
-    if (!req.tenant_id) {
-        return res.status(400).json({ success: false, error: 'Tenant ID required' });
-    }
-
-    try {
-        const tenant = await Tenant.findById(req.tenant_id);
-
+        // 3. Check custom domain
         if (!tenant) {
-            return res.status(404).json({ success: false, error: 'Tenant not found' });
+            tenant = await extractTenantFromCustomDomain(req.headers.host);
         }
 
-        if (tenant.status !== 'active') {
-            return res.status(403).json({ success: false, error: 'Tenant is not active' });
+        // 4. Check JWT token
+        if (!tenant && req.user?.tenantId) {
+            tenant = await getTenantById(req.user.tenantId);
         }
 
-        req.tenant = tenant;
+        // Attach tenant to request
+        if (tenant) {
+            if (tenant.status !== 'active') {
+                return res.status(403).json({
+                    error: 'Store is not active',
+                    code: 'TENANT_INACTIVE',
+                });
+            }
+
+            req.tenant = tenant;
+            req.tenantId = tenant.id;
+
+            // Add tenant to response headers for debugging
+            res.setHeader(TENANT_HEADER, tenant.id);
+        }
+
         next();
     } catch (error) {
-        console.error('Require tenant error:', error);
-        return res.status(500).json({ success: false, error: 'Internal error' });
+        console.error('Tenant middleware error:', error);
+        next(error);
     }
-};
+}
+
+/**
+ * Require tenant middleware
+ * Fails if no tenant found
+ */
+function requireTenant(req, res, next) {
+    if (!req.tenant) {
+        return res.status(400).json({
+            error: 'Store not found',
+            code: 'TENANT_REQUIRED',
+        });
+    }
+    next();
+}
+
+// ============================================
+// TENANT LOOKUP FUNCTIONS
+// ============================================
+
+async function getTenantById(id) {
+    try {
+        const result = await db.query(
+            `SELECT id, slug, name, custom_domain, status, settings, 
+              subscription_plan, subscription_expires_at
+       FROM tenants WHERE id = $1`,
+            [id]
+        );
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Error getting tenant by ID:', error);
+        return null;
+    }
+}
+
+async function getTenantBySlug(slug) {
+    try {
+        const result = await db.query(
+            `SELECT id, slug, name, custom_domain, status, settings,
+              subscription_plan, subscription_expires_at
+       FROM tenants WHERE slug = $1`,
+            [slug]
+        );
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('Error getting tenant by slug:', error);
+        return null;
+    }
+}
+
+// ============================================
+// QUERY HELPERS (Auto-filter by tenant)
+// ============================================
+
+/**
+ * Add tenant filter to queries
+ * Use this to ensure data isolation
+ */
+function withTenant(query, tenantId, paramIndex = 1) {
+    const tenantCondition = `tenant_id = $${paramIndex}`;
+
+    if (query.toLowerCase().includes('where')) {
+        return {
+            query: query.replace(/where/i, `WHERE ${tenantCondition} AND `),
+            params: [tenantId],
+        };
+    } else {
+        // Find insertion point (before ORDER BY, LIMIT, etc)
+        const insertBefore = /(order by|limit|offset|group by|having)/i;
+        const match = query.match(insertBefore);
+
+        if (match) {
+            const index = match.index;
+            return {
+                query: query.slice(0, index) + ` WHERE ${tenantCondition} ` + query.slice(index),
+                params: [tenantId],
+            };
+        }
+
+        return {
+            query: query + ` WHERE ${tenantCondition}`,
+            params: [tenantId],
+        };
+    }
+}
+
+/**
+ * Create a tenant-scoped query function
+ * Automatically adds tenant_id to all queries
+ */
+function createTenantQuery(tenantId) {
+    return {
+        // SELECT with auto tenant filter
+        select: async (table, fields = '*', where = {}, options = {}) => {
+            const conditions = ['tenant_id = $1'];
+            const params = [tenantId];
+            let paramIndex = 2;
+
+            Object.entries(where).forEach(([key, value]) => {
+                conditions.push(`${key} = $${paramIndex}`);
+                params.push(value);
+                paramIndex++;
+            });
+
+            let query = `SELECT ${fields} FROM ${table} WHERE ${conditions.join(' AND ')}`;
+
+            if (options.orderBy) query += ` ORDER BY ${options.orderBy}`;
+            if (options.limit) query += ` LIMIT ${options.limit}`;
+            if (options.offset) query += ` OFFSET ${options.offset}`;
+
+            return db.query(query, params);
+        },
+
+        // INSERT with auto tenant_id
+        insert: async (table, data) => {
+            const dataWithTenant = { ...data, tenant_id: tenantId };
+            const keys = Object.keys(dataWithTenant);
+            const values = Object.values(dataWithTenant);
+            const placeholders = keys.map((_, i) => `$${i + 1}`);
+
+            const query = `
+        INSERT INTO ${table} (${keys.join(', ')})
+        VALUES (${placeholders.join(', ')})
+        RETURNING *
+      `;
+
+            return db.query(query, values);
+        },
+
+        // UPDATE with auto tenant filter
+        update: async (table, data, where) => {
+            const setClauses = [];
+            const conditions = ['tenant_id = $1'];
+            const params = [tenantId];
+            let paramIndex = 2;
+
+            Object.entries(data).forEach(([key, value]) => {
+                setClauses.push(`${key} = $${paramIndex}`);
+                params.push(value);
+                paramIndex++;
+            });
+
+            Object.entries(where).forEach(([key, value]) => {
+                conditions.push(`${key} = $${paramIndex}`);
+                params.push(value);
+                paramIndex++;
+            });
+
+            const query = `
+        UPDATE ${table}
+        SET ${setClauses.join(', ')}, updated_at = NOW()
+        WHERE ${conditions.join(' AND ')}
+        RETURNING *
+      `;
+
+            return db.query(query, params);
+        },
+
+        // DELETE with auto tenant filter
+        delete: async (table, where) => {
+            const conditions = ['tenant_id = $1'];
+            const params = [tenantId];
+            let paramIndex = 2;
+
+            Object.entries(where).forEach(([key, value]) => {
+                conditions.push(`${key} = $${paramIndex}`);
+                params.push(value);
+                paramIndex++;
+            });
+
+            const query = `DELETE FROM ${table} WHERE ${conditions.join(' AND ')} RETURNING id`;
+
+            return db.query(query, params);
+        },
+    };
+}
+
+// ============================================
+// EXPORTS
+// ============================================
 
 module.exports = {
-    extractTenant,
+    // Middleware
+    tenantMiddleware,
     requireTenant,
-    DEFAULT_TENANT_ID
+
+    // Lookup functions
+    getTenantById,
+    getTenantBySlug,
+    extractTenantFromHost,
+    extractTenantFromCustomDomain,
+
+    // Query helpers
+    withTenant,
+    createTenantQuery,
+
+    // Constants
+    TENANT_HEADER,
 };
