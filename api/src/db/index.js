@@ -6,7 +6,7 @@ const pool = new Pool({
     port: process.env.DB_PORT || 5432,
     database: process.env.DB_NAME || 'coreflex',
     user: process.env.DB_USER || 'coreflex',
-    password: process.env.DB_PASSWORD || 'coreflex_secret',
+    password: process.env.DB_PASSWORD || 'coreflex_secret_2024',
     max: 20, // Maximum connections
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
