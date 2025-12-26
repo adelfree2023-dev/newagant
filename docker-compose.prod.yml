@@ -1,0 +1,209 @@
+# CoreFlex Production Docker Compose
+# ملف Docker Compose للإنتاج
+
+version: '3.8'
+
+services:
+  # ==================== API ====================
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: coreflex-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - ADMIN_URL=${ADMIN_URL}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - coreflex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - api-logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # ==================== Workers ====================
+  worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.worker
+    container_name: coreflex-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - api
+      - redis
+    networks:
+      - coreflex-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+  # ==================== Storefront ====================
+  storefront:
+    build:
+      context: ./storefront
+      dockerfile: Dockerfile
+    container_name: coreflex-storefront
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - coreflex-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # ==================== Admin ====================
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: coreflex-admin
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+    networks:
+      - coreflex-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # ==================== Nginx ====================
+  nginx:
+    image: nginx:alpine
+    container_name: coreflex-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites:/etc/nginx/sites-enabled:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+      - storefront
+      - admin
+    networks:
+      - coreflex-network
+
+  # ==================== Certbot ====================
+  certbot:
+    image: certbot/certbot
+    container_name: coreflex-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  # ==================== PostgreSQL ====================
+  postgres:
+    image: postgres:15-alpine
+    container_name: coreflex-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - coreflex-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # ==================== Redis ====================
+  redis:
+    image: redis:7-alpine
+    container_name: coreflex-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - coreflex-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
+# ==================== Networks ====================
+networks:
+  coreflex-network:
+    driver: bridge
+
+# ==================== Volumes ====================
+volumes:
+  postgres-data:
+  redis-data:
+  api-logs:
