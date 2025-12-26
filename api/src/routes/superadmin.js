@@ -5,16 +5,12 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const { query } = require('../db');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
-const { superAdminLimiter, superAdminIPCheck, superAdminSessionCheck, auditLog } = require('../middleware/security');
+const { adminLimiter } = require('../middleware/security');
 
 // ============ Apply Super Admin Security ============
-router.use(superAdminLimiter);
+router.use(adminLimiter);
 router.use(authenticate);
 router.use(requireSuperAdmin);
-router.use(superAdminSessionCheck);
-router.use(auditLog);
-// IP whitelist (uncomment in production)
-// router.use(superAdminIPCheck);
 
 // ============ Dashboard ============
 
