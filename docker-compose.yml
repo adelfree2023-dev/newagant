@@ -82,7 +82,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3000:3000"
     volumes:
@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3001:3001"
     volumes:
@@ -122,7 +122,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3002:3002"
     volumes:
@@ -142,7 +142,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3003:3003"
     volumes:
