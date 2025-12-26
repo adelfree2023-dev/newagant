@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { generateToken, generateRefreshToken, authenticate } = require('../middleware/auth');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 
 // ============ Auth Routes ============
 
 // POST /api/auth/register - Register new user
-router.post('/register', extractTenant, async (req, res) => {
+router.post('/register', tenantMiddleware, async (req, res) => {
     try {
         const { email, password, name, phone } = req.body;
 
@@ -53,7 +53,7 @@ router.post('/register', extractTenant, async (req, res) => {
 });
 
 // POST /api/auth/login - Login user
-router.post('/login', extractTenant, async (req, res) => {
+router.post('/login', tenantMiddleware, async (req, res) => {
     try {
         const { email, password } = req.body;
 
