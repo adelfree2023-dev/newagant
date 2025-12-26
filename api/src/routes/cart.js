@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { authenticate } = require('../middleware/auth');
 
-router.use(extractTenant);
+router.use(tenantMiddleware);
 
 // ============ Cart Routes ============
 

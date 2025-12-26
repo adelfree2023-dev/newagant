@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const { query } = require('../db');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-router.use(extractTenant);
+router.use(tenantMiddleware);
 
 // ============ Customer Routes ============
 

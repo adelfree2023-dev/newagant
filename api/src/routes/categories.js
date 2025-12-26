@@ -9,7 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { requirePermission } = require('../services/rbac');
 const { log, AUDIT_EVENTS } = require('../services/audit');
 
@@ -17,7 +17,7 @@ const { log, AUDIT_EVENTS } = require('../services/audit');
  * جميع الفئات (عام)
  * GET /api/categories
  */
-router.get('/', extractTenant, optionalAuth, async (req, res) => {
+router.get('/', tenantMiddleware, optionalAuth, async (req, res) => {
     try {
         const { include_inactive } = req.query;
 
@@ -55,7 +55,7 @@ router.get('/', extractTenant, optionalAuth, async (req, res) => {
  * فئة واحدة
  * GET /api/categories/:slug
  */
-router.get('/:slug', extractTenant, optionalAuth, async (req, res) => {
+router.get('/:slug', tenantMiddleware, optionalAuth, async (req, res) => {
     try {
         const result = await query(
             `SELECT c.*, p.name as parent_name
@@ -103,7 +103,7 @@ router.get('/:slug', extractTenant, optionalAuth, async (req, res) => {
  * إنشاء فئة
  * POST /api/categories/admin
  */
-router.post('/admin', extractTenant, authenticateToken, requirePermission('categories:create'), async (req, res) => {
+router.post('/admin', tenantMiddleware, authenticateToken, requirePermission('categories:create'), async (req, res) => {
     try {
         const {
             name,
@@ -173,7 +173,7 @@ router.post('/admin', extractTenant, authenticateToken, requirePermission('categ
  * تحديث فئة
  * PUT /api/categories/admin/:id
  */
-router.put('/admin/:id', extractTenant, authenticateToken, requirePermission('categories:update'), async (req, res) => {
+router.put('/admin/:id', tenantMiddleware, authenticateToken, requirePermission('categories:update'), async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
@@ -239,7 +239,7 @@ router.put('/admin/:id', extractTenant, authenticateToken, requirePermission('ca
  * حذف فئة
  * DELETE /api/categories/admin/:id
  */
-router.delete('/admin/:id', extractTenant, authenticateToken, requirePermission('categories:delete'), async (req, res) => {
+router.delete('/admin/:id', tenantMiddleware, authenticateToken, requirePermission('categories:delete'), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -310,7 +310,7 @@ router.delete('/admin/:id', extractTenant, authenticateToken, requirePermission(
  * إعادة ترتيب الفئات
  * POST /api/categories/admin/reorder
  */
-router.post('/admin/reorder', extractTenant, authenticateToken, requirePermission('categories:update'), async (req, res) => {
+router.post('/admin/reorder', tenantMiddleware, authenticateToken, requirePermission('categories:update'), async (req, res) => {
     try {
         const { order } = req.body; // Array of { id, sort_order }
 

@@ -9,7 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { requirePermission } = require('../services/rbac');
 const { log, AUDIT_EVENTS } = require('../services/audit');
 
@@ -17,7 +17,7 @@ const { log, AUDIT_EVENTS } = require('../services/audit');
  * التحقق من صلاحية كوبون
  * POST /api/coupons/validate
  */
-router.post('/validate', extractTenant, authenticateToken, async (req, res) => {
+router.post('/validate', tenantMiddleware, authenticateToken, async (req, res) => {
     try {
         const { code, cart_total } = req.body;
 
@@ -91,7 +91,7 @@ router.post('/validate', extractTenant, authenticateToken, async (req, res) => {
  * جميع الكوبونات
  * GET /api/coupons/admin
  */
-router.get('/admin', extractTenant, authenticateToken, requirePermission('coupons:read'), async (req, res) => {
+router.get('/admin', tenantMiddleware, authenticateToken, requirePermission('coupons:read'), async (req, res) => {
     try {
         const result = await query(
             `SELECT * FROM coupons WHERE tenant_id = $1 ORDER BY created_at DESC`,
@@ -115,7 +115,7 @@ router.get('/admin', extractTenant, authenticateToken, requirePermission('coupon
  * إنشاء كوبون
  * POST /api/coupons/admin
  */
-router.post('/admin', extractTenant, authenticateToken, requirePermission('coupons:create'), async (req, res) => {
+router.post('/admin', tenantMiddleware, authenticateToken, requirePermission('coupons:create'), async (req, res) => {
     try {
         const {
             code,
@@ -198,7 +198,7 @@ router.post('/admin', extractTenant, authenticateToken, requirePermission('coupo
  * تحديث كوبون
  * PUT /api/coupons/admin/:id
  */
-router.put('/admin/:id', extractTenant, authenticateToken, requirePermission('coupons:update'), async (req, res) => {
+router.put('/admin/:id', tenantMiddleware, authenticateToken, requirePermission('coupons:update'), async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
@@ -259,7 +259,7 @@ router.put('/admin/:id', extractTenant, authenticateToken, requirePermission('co
  * حذف كوبون
  * DELETE /api/coupons/admin/:id
  */
-router.delete('/admin/:id', extractTenant, authenticateToken, requirePermission('coupons:delete'), async (req, res) => {
+router.delete('/admin/:id', tenantMiddleware, authenticateToken, requirePermission('coupons:delete'), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -303,7 +303,7 @@ router.delete('/admin/:id', extractTenant, authenticateToken, requirePermission(
  * إحصائيات الكوبون
  * GET /api/coupons/admin/:id/stats
  */
-router.get('/admin/:id/stats', extractTenant, authenticateToken, requirePermission('coupons:read'), async (req, res) => {
+router.get('/admin/:id/stats', tenantMiddleware, authenticateToken, requirePermission('coupons:read'), async (req, res) => {
     try {
         const { id } = req.params;
 

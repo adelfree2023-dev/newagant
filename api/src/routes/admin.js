@@ -3,10 +3,10 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-router.use(extractTenant);
+router.use(tenantMiddleware);
 router.use(authenticate);
 router.use(requireAdmin);
 

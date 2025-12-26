@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
-const { extractTenant } = require('../middleware/tenant');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // Apply tenant middleware
-router.use(extractTenant);
+router.use(tenantMiddleware);
 
 // ============ Public Routes ============
 
