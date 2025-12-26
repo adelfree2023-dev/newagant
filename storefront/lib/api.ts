@@ -26,6 +26,8 @@ export interface Product {
     category_id: string;
     stock: number;
     sku?: string;
+    slug: string;
+    is_featured?: boolean;
 }
 
 export interface CartItem {
