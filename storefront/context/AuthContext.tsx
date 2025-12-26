@@ -16,8 +16,8 @@ interface AuthContextType {
     loading: boolean;
     error: string | null;
     isAuthenticated: boolean;
-    login: (email: string, password: string) => Promise<boolean>;
-    register: (data: RegisterData) => Promise<boolean>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     updateProfile: (data: Partial<User>) => Promise<boolean>;
     clearError: () => void;
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             setError(null);
             setLoading(true);
@@ -69,24 +69,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (response.error) {
                 setError(response.error);
-                return false;
+                return { success: false, error: response.error };
             }
 
             if (response.data) {
                 setUser(response.data.user);
-                return true;
+                return { success: true };
             }
 
-            return false;
+            return { success: false, error: 'حدث خطأ غير متوقع' };
         } catch (err) {
             setError('حدث خطأ أثناء تسجيل الدخول');
-            return false;
+            return { success: false, error: 'حدث خطأ أثناء تسجيل الدخول' };
         } finally {
             setLoading(false);
         }
     }, []);
 
-    const register = useCallback(async (data: RegisterData): Promise<boolean> => {
+    const register = useCallback(async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
         try {
             setError(null);
             setLoading(true);
@@ -95,18 +95,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (response.error) {
                 setError(response.error);
-                return false;
+                return { success: false, error: response.error };
             }
 
             if (response.data) {
                 setUser(response.data.user);
-                return true;
+                return { success: true };
             }
 
-            return false;
+            return { success: false, error: 'حدث خطأ غير متوقع' };
         } catch (err) {
             setError('حدث خطأ أثناء التسجيل');
-            return false;
+            return { success: false, error: 'حدث خطأ أثناء التسجيل' };
         } finally {
             setLoading(false);
         }
