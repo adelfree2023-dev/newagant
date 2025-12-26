@@ -85,7 +85,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - api
     networks:
@@ -107,7 +107,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
-      - "3001:3001"
+      - "3002:3000"
     depends_on:
       - api
     networks:
@@ -129,7 +129,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
-      - "3002:3002"
+      - "3003:3000"
     depends_on:
       - api
     networks:
@@ -151,7 +151,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
-      - "3003:3003"
+      - "3000:3000"
     depends_on:
       - api
     networks:
