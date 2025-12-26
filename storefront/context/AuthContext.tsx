@@ -21,6 +21,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     updateProfile: (data: Partial<User>) => Promise<boolean>;
     clearError: () => void;
+    requireAuth: (redirectPath?: string) => void;
 }
 
 interface RegisterData {
@@ -150,6 +151,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null);
     }, []);
 
+    const requireAuth = useCallback((redirectPath?: string) => {
+        const path = redirectPath || window.location.pathname;
+        if (!user && !loading) {
+            window.location.href = `/login?redirect=${encodeURIComponent(path)}`;
+        }
+    }, [user, loading]);
+
     const value: AuthContextType = {
         user,
         loading,
@@ -160,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateProfile,
         clearError,
+        requireAuth,
     };
 
     return (

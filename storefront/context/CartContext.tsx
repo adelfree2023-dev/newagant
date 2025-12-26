@@ -14,6 +14,7 @@ import { cartApi, CartItem, Product } from '@/lib/api';
 interface CartContextType {
     items: CartItem[];
     total: number;
+    totalPrice: number;
     itemCount: number;
     loading: boolean;
     error: string | null;
@@ -173,6 +174,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const value: CartContextType = {
         items,
         total,
+        totalPrice: total,
         itemCount,
         loading,
         error,
