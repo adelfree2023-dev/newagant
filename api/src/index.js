@@ -14,7 +14,7 @@ const superAdminRoutes = require('./routes/superadmin');
 
 // Import middleware
 const { tenantMiddleware } = require('./middleware/tenant');
-const { apiLimiter, authLimiter, securityHeaders, sanitizeInput } = require('./middleware/security');
+const { generalLimiter, authLimiter, securityHeaders, inputSanitization } = require('./middleware/security');
 
 // Import database
 const { pool, query } = require('./db');
@@ -26,8 +26,8 @@ const PORT = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 app.use(securityHeaders);
-app.use(sanitizeInput);
-app.use('/api', apiLimiter);
+app.use(inputSanitization);
+app.use('/api', generalLimiter);
 app.use('/api/auth', authLimiter);
 
 // ============ Health Check ============
