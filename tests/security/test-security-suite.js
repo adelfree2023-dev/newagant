@@ -12,8 +12,8 @@ const axios = require('axios'); // We might need to install this or use fetch if
 const assert = require('assert');
 
 // Configuration
-const BASE_URL = 'http://localhost/api/v1'; // Through Nginx
-// const BASE_URL = 'http://localhost:8000/api/v1'; // Direct if Nginx is down
+const BASE_URL = 'http://localhost:8000/api'; // Direct to API container
+// const BASE_URL = 'http://localhost/api'; // Through Nginx
 
 const COLORS = {
     GREEN: '\x1b[32m',
@@ -42,7 +42,7 @@ async function testSecurityHeaders() {
 
         // RateLimit Headers (from Nginx or Express)
         if (headers['x-ratelimit-limit']) logPass('Rate Limit Headers Present');
-        
+
     } catch (error) {
         logFail('Failed to fetch headers', error.message);
     }
@@ -51,13 +51,13 @@ async function testSecurityHeaders() {
 async function testRateLimiting() {
     logInfo('Testing Rate Limiting (Simulating Attack)...');
     logInfo('Sending 15 requests rapidly...');
-    
+
     let blocked = false;
     let successCount = 0;
 
     // Assuming limit is 100 per 15m for General, but Auth is 10. Let's test Auth Login endpoint which is stricter (10).
     const ATTACK_SIZE = 15;
-    
+
     try {
         const requests = [];
         for (let i = 0; i < ATTACK_SIZE; i++) {
@@ -126,9 +126,9 @@ async function testBasicInjection() {
         // Ideally, it should sanitize.
         if (res.data && res.data.user && res.data.user.name) {
             if (res.data.user.name.includes('<script>')) {
-                 logFail('XSS Probe: Script tag was stored/reflected unsanitized!');
+                logFail('XSS Probe: Script tag was stored/reflected unsanitized!');
             } else {
-                 logPass('XSS Probe: Script tag was sanitized/removed.');
+                logPass('XSS Probe: Script tag was sanitized/removed.');
             }
         } else {
             logInfo('XSS Probe: Registration failed or returned no data (Safe default)');
