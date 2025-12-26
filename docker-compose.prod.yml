@@ -105,6 +105,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+      - PORT=3000
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3002:3000"
