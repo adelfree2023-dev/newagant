@@ -1,108 +1,121 @@
+# Development Docker Compose
+# ملف Docker Compose للتطوير - أسهل في التشغيل
+
+version: '3.8'
+
 services:
-  # PostgreSQL Database
+  # ==================== PostgreSQL ====================
   postgres:
     image: postgres:16-alpine
-    container_name: coreflex-db
+    container_name: coreflex-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: coreflex
-      POSTGRES_USER: coreflex
-      POSTGRES_PASSWORD: coreflex_secret_2024
+      - POSTGRES_DB=coreflex
+      - POSTGRES_USER=coreflex
+      - POSTGRES_PASSWORD=coreflex123
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     ports:
       - "5432:5432"
-    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U coreflex" ]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U coreflex -d coreflex"]
+      interval: 5s
       timeout: 5s
       retries: 5
 
-  # Redis Cache
+  # ==================== Redis ====================
   redis:
     image: redis:7-alpine
     container_name: coreflex-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
     ports:
       - "6379:6379"
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # Backend API (Node.js/Express)
+  # ==================== API ====================
   api:
     build:
       context: ./api
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: coreflex-api
+    restart: unless-stopped
     environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://coreflex:coreflex_secret_2024@postgres:5432/coreflex
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your_jwt_secret_key_change_in_production
-      PORT: 8000
-      SERVER_IP: 35.226.47.16
+      - NODE_ENV=development
+      - PORT=8000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=coreflex
+      - DB_USER=coreflex
+      - DB_PASSWORD=coreflex123
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - FRONTEND_URL=http://localhost:3000
+      - ADMIN_URL=http://localhost:3001
     ports:
       - "8000:8000"
+    volumes:
+      - ./api:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
-    restart: unless-stopped
+        condition: service_healthy
+    command: npm run dev
 
-  # Landing Page
-  landing:
-    build:
-      context: ./landing
-      dockerfile: Dockerfile
-    container_name: coreflex-landing
-    environment:
-      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
-    restart: unless-stopped
-
-  # Storefront (صفحة البيع)
+  # ==================== Storefront ====================
   storefront:
     build:
       context: ./storefront
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: coreflex-storefront
+    restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
-      - "3001:3001"
+      - "3000:3000"
+    volumes:
+      - ./storefront:/app
+      - /app/node_modules
+      - /app/.next
     depends_on:
       - api
-    restart: unless-stopped
+    command: npm run dev
 
-  # Admin Dashboard (لوحة التحكم)
+  # ==================== Admin ====================
   admin:
     build:
       context: ./admin
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: coreflex-admin
+    restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
-      - "3002:3002"
+      - "3001:3001"
+    volumes:
+      - ./admin:/app
+      - /app/node_modules
+      - /app/.next
     depends_on:
       - api
-    restart: unless-stopped
+    command: npm run dev
 
-  # Super Admin (إدارة المنصة)
-  superadmin:
-    build:
-      context: ./superadmin
-      dockerfile: Dockerfile
-    container_name: coreflex-superadmin
-    environment:
-      NEXT_PUBLIC_API_URL: http://35.226.47.16:8000
-    ports:
-      - "3003:3003"
-    depends_on:
-      - api
-    restart: unless-stopped
+networks:
+  default:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  postgres-data:
+  redis-data:

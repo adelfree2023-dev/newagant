@@ -1,0 +1,25 @@
+# Worker Dockerfile
+# Dockerfile للـ Workers
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy worker files
+COPY src/workers ./src/workers
+COPY src/services ./src/services
+COPY src/db ./src/db
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 worker
+
+USER worker
+
+CMD ["node", "src/workers/index.js"]
