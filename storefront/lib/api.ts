@@ -181,6 +181,7 @@ export const productsApi = {
         page?: number;
         limit?: number;
         sort?: string;
+        featured?: boolean;
     }) => {
         const params = new URLSearchParams();
         if (filters) {
