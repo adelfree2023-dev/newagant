@@ -2,7 +2,7 @@
 
 /**
  * Storefront Cart Page
- * صفحة السلة مع API
+ * صفحة السلة مع API - الإصدار المحدث
  * 
  * يجب وضعه في: storefront/app/cart/page.tsx
  */
@@ -67,15 +67,15 @@ export default function CartPage() {
                     <div className="lg:col-span-2 space-y-4">
                         {items.map((item) => (
                             <div
-                                key={item.productId}
+                                key={item.product_id}
                                 className="bg-white rounded-xl shadow-sm p-4 flex gap-4"
                             >
                                 {/* Product Image */}
                                 <div className="w-24 h-24 relative flex-shrink-0 rounded-lg overflow-hidden">
-                                    {item.image ? (
+                                    {item.product?.images?.[0] ? (
                                         <Image
-                                            src={item.image}
-                                            alt={item.name}
+                                            src={item.product.images[0]}
+                                            alt={item.product.name}
                                             fill
                                             className="object-cover"
                                         />
@@ -88,22 +88,22 @@ export default function CartPage() {
 
                                 {/* Product Info */}
                                 <div className="flex-1">
-                                    <h3 className="font-medium text-gray-900">{item.name}</h3>
+                                    <h3 className="font-medium text-gray-900">{item.product?.name || 'منتج غير متوفر'}</h3>
                                     <p className="text-primary-600 font-bold mt-1">
-                                        {item.price.toFixed(2)} ر.س
+                                        {(item.product?.price || 0).toFixed(2)} ر.س
                                     </p>
 
                                     {/* Quantity Controls */}
                                     <div className="flex items-center gap-3 mt-3">
                                         <button
-                                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold"
                                         >
                                             -
                                         </button>
                                         <span className="font-medium w-8 text-center">{item.quantity}</span>
                                         <button
-                                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold"
                                         >
                                             +
@@ -114,10 +114,10 @@ export default function CartPage() {
                                 {/* Item Total & Remove */}
                                 <div className="text-left flex flex-col justify-between">
                                     <p className="font-bold text-gray-900">
-                                        {(item.price * item.quantity).toFixed(2)} ر.س
+                                        {((item.product?.price || 0) * item.quantity).toFixed(2)} ر.س
                                     </p>
                                     <button
-                                        onClick={() => removeFromCart(item.productId)}
+                                        onClick={() => removeFromCart(item.id)}
                                         className="text-red-500 hover:text-red-600 text-sm"
                                     >
                                         حذف

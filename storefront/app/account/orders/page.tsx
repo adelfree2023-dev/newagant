@@ -30,7 +30,8 @@ export default function OrdersPage() {
             try {
                 const result = await api.orders.getAll();
                 if (result.data) {
-                    setOrders(result.data.orders || result.data);
+                    // @ts-ignore - Handle potential API response variation (Array vs Object wrapper)
+                    setOrders((result.data as any).orders || result.data);
                 }
             } catch (error) {
                 console.error('Error loading orders:', error);
