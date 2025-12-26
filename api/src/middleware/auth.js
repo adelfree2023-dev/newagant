@@ -301,6 +301,7 @@ module.exports = {
 
     // Middleware
     authenticate,
+    authenticateToken: authenticate, // Alias for backwards compatibility
     optionalAuth,
     requireRole,
     requireAdmin,
