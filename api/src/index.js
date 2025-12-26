@@ -13,7 +13,7 @@ const adminRoutes = require('./routes/admin');
 const superAdminRoutes = require('./routes/superadmin');
 
 // Import middleware
-const { extractTenant } = require('./middleware/tenant');
+const { tenantMiddleware } = require('./middleware/tenant');
 const { apiLimiter, authLimiter, securityHeaders, sanitizeInput } = require('./middleware/security');
 
 // Import database
@@ -67,7 +67,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/superadmin', superAdminRoutes);
 
 // ============ Homepage Data (Combined) ============
-app.get('/api/homepage', extractTenant, async (req, res) => {
+app.get('/api/homepage', tenantMiddleware, async (req, res) => {
     try {
         const Product = require('./models/Product');
         const Category = require('./models/Category');
@@ -102,7 +102,7 @@ app.get('/api/homepage', extractTenant, async (req, res) => {
 });
 
 // ============ Search ============
-app.get('/api/search', extractTenant, async (req, res) => {
+app.get('/api/search', tenantMiddleware, async (req, res) => {
     try {
         const { q } = req.query;
         if (!q) return res.json({ success: true, data: [] });
@@ -121,7 +121,7 @@ app.get('/api/search', extractTenant, async (req, res) => {
 });
 
 // ============ Store Config ============
-app.get('/api/store/config', extractTenant, async (req, res) => {
+app.get('/api/store/config', tenantMiddleware, async (req, res) => {
     try {
         const Tenant = require('./models/Tenant');
         const tenant = await Tenant.findById(req.tenant_id);
