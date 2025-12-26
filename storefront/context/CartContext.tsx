@@ -18,7 +18,7 @@ interface CartContextType {
     itemCount: number;
     loading: boolean;
     error: string | null;
-    addToCart: (productId: string, quantity?: number) => Promise<boolean>;
+    addToCart: (productOrId: string | { productId: string; quantity?: number; name?: string; price?: number; image?: string }, quantity?: number) => Promise<boolean>;
     updateQuantity: (itemId: string, quantity: number) => Promise<boolean>;
     removeFromCart: (itemId: string) => Promise<boolean>;
     clearCart: () => Promise<boolean>;
@@ -56,11 +56,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const addToCart = useCallback(async (productId: string, quantity: number = 1): Promise<boolean> => {
+    const addToCart = useCallback(async (productOrId: string | { productId: string; quantity?: number }, quantity: number = 1): Promise<boolean> => {
         try {
             setError(null);
 
-            const response = await cartApi.add(productId, quantity);
+            const productId = typeof productOrId === 'string' ? productOrId : productOrId.productId;
+            const qty = typeof productOrId === 'string' ? quantity : (productOrId.quantity || 1);
+
+            const response = await cartApi.add(productId, qty);
 
             if (response.error) {
                 setError(response.error);
