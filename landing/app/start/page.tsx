@@ -107,6 +107,7 @@ export default function StartWizard() {
                 toast.success('تم إنشاء متجرك بنجاح! 🚀')
                 // Store success data
                 localStorage.setItem('provision_result', JSON.stringify(result))
+                localStorage.setItem('provision_password', data.owner_password)
                 router.push('/success')
             } else {
                 toast.error(result.error || 'حدث خطأ في النظام')
@@ -196,8 +197,8 @@ export default function StartWizard() {
                                                             checkSubdomain(e.target.value)
                                                         }}
                                                         className={`w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 transition-all dir-ltr ${isSubdomainAvailable === true ? 'border-green-500 ring-green-500' :
-                                                                isSubdomainAvailable === false ? 'border-red-500 ring-red-500' :
-                                                                    'border-gray-200 focus:ring-blue-500'
+                                                            isSubdomainAvailable === false ? 'border-red-500 ring-red-500' :
+                                                                'border-gray-200 focus:ring-blue-500'
                                                             }`}
                                                         placeholder="store"
                                                         dir="ltr"
@@ -242,8 +243,8 @@ export default function StartWizard() {
                                             <label
                                                 key={type.id}
                                                 className={`flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all hover:shadow-md ${watch('business_type') === type.id
-                                                        ? 'border-blue-500 bg-blue-50/50'
-                                                        : 'border-gray-100 hover:border-blue-200'
+                                                    ? 'border-blue-500 bg-blue-50/50'
+                                                    : 'border-gray-100 hover:border-blue-200'
                                                     }`}
                                             >
                                                 <input
@@ -342,8 +343,8 @@ export default function StartWizard() {
                                             <label
                                                 key={plan.id}
                                                 className={`p-6 border-2 rounded-2xl cursor-pointer text-center transition-all hover:shadow-lg relative overflow-hidden ${watch('plan') === plan.id
-                                                        ? 'border-blue-500 bg-blue-50 transform scale-105 shadow-xl'
-                                                        : 'border-gray-100 hover:border-gray-300'
+                                                    ? 'border-blue-500 bg-blue-50 transform scale-105 shadow-xl'
+                                                    : 'border-gray-100 hover:border-gray-300'
                                                     }`}
                                             >
                                                 <input
