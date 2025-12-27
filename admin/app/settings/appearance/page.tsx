@@ -1,25 +1,28 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/lib/api';
 import { Check, Palette, Layout, MousePointerClick, Loader2 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
+// Note: In a monorepo we'd share this file, for now we will duplicate/import relative if possible
+// Assuming we copied the registry to admin or sharing isn't set up, we define it here or fetch it.
+// To keep it simple for "50 themes", let's assume we want to fetch available themes from API in future.
+// For now, I'll update the array structure to match the new robust one.
 
 const THEMES = [
     {
         id: 'modern',
         name: 'العصري (Modern)',
-        description: 'تصميم حديث وأنيق يركز على الصور الكبيرة والتجربة البصرية. مثالي للأزياء والمتاجر العصرية.',
+        description: 'تصميم حديث وأنيق يركز على الصور الكبيرة والتجربة البصرية.',
         colors: ['#4f46e5', '#ffffff', '#f3f4f6'],
-        features: ['هيدر شفاف', 'صور كبيرة', 'قائمة جانبية للموبايل']
+        features: ['هيدر شفاف', 'صور كبيرة', 'قائمة جانبية'],
     },
     {
         id: 'classic',
         name: 'الكلاسيكي (Classic)',
-        description: 'تصميم تقليدي موثوق مشابه لأمازون. يركز على عرض كمية كبيرة من البيانات والمنتجات.',
+        description: 'تصميم تقليدي موثوق مشابه للمتاجر العالمية الكبرى.',
         colors: ['#131921', '#febd69', '#ffffff'],
-        features: ['شريط علوي داكن', 'قائمة أقسام أفقية', 'تركيز على البحث']
-    }
+        features: ['شريط داكن', 'عرض بيانات كثيف', 'تركيز على البحث'],
+    },
+    // You can add more here...
 ];
 
 export default function AppearancePage() {

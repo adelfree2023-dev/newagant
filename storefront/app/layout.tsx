@@ -12,6 +12,7 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 import { StoreConfigProvider } from '@/context/StoreConfigContext';
 import { CartProvider } from '@/context/CartContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import FloatingContacts from '@/components/FloatingContacts';
 import FeaturesBar from '@/components/FeaturesBar';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
@@ -39,32 +40,34 @@ export default function RootLayout({
             </head>
             <body className="bg-gray-50 font-tajawal">
                 <StoreConfigProvider>
-                    <CartProvider>
-                        <Providers>
-                            <Toaster position="top-center" richColors />
+                    <LanguageProvider>
+                        <CartProvider>
+                            <Providers>
+                                <Toaster position="top-center" richColors />
 
-                            <div className="flex flex-col min-h-screen">
-                                <FeatureGuard feature="storefront.header">
-                                    <Header />
-                                </FeatureGuard>
+                                <div className="flex flex-col min-h-screen">
+                                    <FeatureGuard feature="storefront.header">
+                                        <Header />
+                                    </FeatureGuard>
 
-                                <FeaturesBar />
+                                    <FeaturesBar />
 
-                                <main className="flex-1">
-                                    {children}
-                                </main>
+                                    <main className="flex-1">
+                                        {children}
+                                    </main>
 
-                                <NewsletterSection />
+                                    <NewsletterSection />
 
-                                <FeatureGuard feature="storefront.footer">
-                                    <Footer />
-                                </FeatureGuard>
+                                    <FeatureGuard feature="storefront.footer">
+                                        <Footer />
+                                    </FeatureGuard>
 
-                                <FloatingContacts />
-                                <ThemeSwitcher />
-                            </div>
-                        </Providers>
-                    </CartProvider>
+                                    <FloatingContacts />
+                                    <ThemeSwitcher />
+                                </div>
+                            </Providers>
+                        </CartProvider>
+                    </LanguageProvider>
                 </StoreConfigProvider>
             </body>
         </html>

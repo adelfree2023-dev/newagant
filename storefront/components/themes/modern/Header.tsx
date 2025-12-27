@@ -7,6 +7,8 @@ import { ShoppingCart, Menu, X, Search, Phone, Heart, User, MapPin, ChevronDown 
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useStoreConfig } from '@/context/StoreConfigContext';
+import { useLanguage } from '@/context/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 // Mock Categories
 const categories = [
@@ -26,10 +28,10 @@ export default function Header() {
     const { cart } = useCart();
     const { user } = useAuth();
     const { config } = useStoreConfig();
+    const { t } = useLanguage();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Calculate total items
     const cartItemsCount = cart.items.reduce((acc, item) => acc + item.quantity, 0);
 
     return (
@@ -38,24 +40,17 @@ export default function Header() {
             <div className="bg-gray-900 text-white text-xs py-2">
                 <div className="container mx-auto px-4 flex justify-between items-center">
                     <div className="flex items-center gap-4">
+                        {/* Language Switcher */}
+                        <LanguageSwitcher />
+
                         <span className="flex items-center gap-1">
                             <Phone className="w-3 h-3" />
                             {config?.phone || '920000000'}
                         </span>
                         <span className="hidden sm:flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            توصيل لجميع مناطق المملكة
+                            {t('delivery_to')} {t('all_regions') || 'المملكة'}
                         </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        {config?.features?.pages?.track_order !== false && (
-                            <Link href="/track-order" className="hover:text-primary-400 text-gray-300">
-                                تتبع الطلب
-                            </Link>
-                        )}
-                        <Link href="/help" className="hover:text-primary-400 text-gray-300">
-                            المساعدة
-                        </Link>
                     </div>
                 </div>
             </div>
@@ -75,7 +70,7 @@ export default function Header() {
                         {/* Logo */}
                         <Link href="/" className="flex-shrink-0 group">
                             <h1 className="text-2xl font-black text-primary-600 tracking-tighter group-hover:scale-105 transition-transform">
-                                {config?.store_name || 'المتجر'}
+                                {config?.store_name || 'Al-Store'}
                             </h1>
                         </Link>
 
@@ -84,13 +79,13 @@ export default function Header() {
                             <div className="relative group">
                                 <input
                                     type="text"
-                                    placeholder="ابحث عن منتجات..."
+                                    placeholder={t('search_placeholder')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full py-2.5 px-4 pr-12 rounded-full border border-gray-200 bg-gray-50 
                                              focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all shadow-sm"
                                 />
-                                <button className="absolute left-1 top-1 h-[calc(100%-8px)] px-4 bg-primary-600 hover:bg-primary-700 
+                                <button className="absolute right-1 top-1 h-[calc(100%-8px)] px-4 bg-primary-600 hover:bg-primary-700 
                                                  rounded-full transition-colors flex items-center justify-center">
                                     <Search className="w-4 h-4 text-white" />
                                 </button>
@@ -122,50 +117,38 @@ export default function Header() {
                                         </span>
                                     )}
                                 </div>
-                                <span className="font-medium hidden sm:block">السلة</span>
+                                <span className="font-medium hidden sm:block">{t('cart')}</span>
                             </Link>
-                        </div>
-                    </div>
-
-                    {/* Mobile Search */}
-                    <div className="lg:hidden mt-4">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="ابحث..."
-                                className="w-full py-2 px-4 pr-10 rounded-lg bg-gray-100 border-none text-sm"
-                            />
-                            <Search className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Navbar */}
+            {/* Navbar (Desktop) */}
             <div className="hidden lg:block bg-white border-b border-gray-100">
                 <div className="container mx-auto px-4 flex items-center gap-8 text-sm font-medium text-gray-900 h-12">
                     <div className="mega-menu-trigger relative h-full flex items-center group cursor-pointer border-l border-gray-100 pl-6 ml-2">
                         <button className="flex items-center gap-2 text-primary-600 hover:text-primary-700">
                             <Menu className="w-4 h-4" />
-                            جميع الأقسام
+                            {t('all_categories')}
                         </button>
                     </div>
 
-                    <Link href="/" className="hover:text-primary-600 transition-colors">الرئيسية</Link>
+                    <Link href="/" className="hover:text-primary-600 transition-colors">{t('home')}</Link>
 
                     {config?.features?.pages?.about !== false && (
                         <Link href="/about" className={`hover:text-primary-600 transition-colors ${pathname === '/about' ? 'text-primary-600' : ''}`}>
-                            من نحن
+                            {t('about')}
                         </Link>
                     )}
 
                     <Link href="/category/offers" className="text-red-500 hover:text-red-600 transition-colors flex items-center gap-1">
-                        عروض خاصة 🔥
+                        {t('deals')} 🔥
                     </Link>
 
                     {config?.features?.pages?.contact !== false && (
                         <Link href="/contact" className={`hover:text-primary-600 transition-colors ${pathname === '/contact' ? 'text-primary-600' : ''}`}>
-                            اتصل بنا
+                            {t('contact')}
                         </Link>
                     )}
                 </div>
@@ -177,15 +160,15 @@ export default function Header() {
                     <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
                     <div className="absolute top-0 right-0 w-3/4 max-w-xs h-full bg-white shadow-2xl p-6 flex flex-col gap-4">
                         <div className="flex items-center justify-between mb-4">
-                            <span className="font-bold text-lg">القائمة</span>
+                            <span className="font-bold text-lg">{t('menu')}</span>
                             <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
                         <nav className="flex flex-col gap-2">
-                            <Link href="/" className="p-3 bg-gray-50 rounded-lg font-medium text-gray-900">الرئيسية</Link>
-                            {config?.features?.pages?.about !== false && <Link href="/about" className="p-3 hover:bg-gray-50 rounded-lg">من نحن</Link>}
-                            {config?.features?.pages?.contact !== false && <Link href="/contact" className="p-3 hover:bg-gray-50 rounded-lg">اتصل بنا</Link>}
+                            <Link href="/" className="p-3 bg-gray-50 rounded-lg font-medium text-gray-900">{t('home')}</Link>
+                            {config?.features?.pages?.about !== false && <Link href="/about" className="p-3 hover:bg-gray-50 rounded-lg">{t('about')}</Link>}
+                            {config?.features?.pages?.contact !== false && <Link href="/contact" className="p-3 hover:bg-gray-50 rounded-lg">{t('contact')}</Link>}
                         </nav>
                     </div>
                 </div>

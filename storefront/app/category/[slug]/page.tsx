@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Grid, List, SlidersHorizontal, Loader2 } from 'lucide-react'
 import ProductCard from '@/components/product/ProductCard'
+import FilterSidebar from '@/components/product/FilterSidebar'
+import { useLanguage } from '@/context/LanguageContext'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://35.226.47.16:8000'
 
@@ -32,13 +34,17 @@ interface Category {
 
 export default function CategoryPage() {
     const params = useParams()
+    const searchParams = useSearchParams()
+    const { t, locale } = useLanguage();
     const [category, setCategory] = useState<Category | null>(null)
     const [loading, setLoading] = useState(true)
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     const [sortBy, setSortBy] = useState('default')
+    const [showFilters, setShowFilters] = useState(false) // Mobile
 
     useEffect(() => {
         async function fetchCategory() {
+            setLoading(true);
             try {
                 const res = await fetch(`${API_URL}/api/categories/${params.slug}`)
                 const json = await res.json()
@@ -54,6 +60,23 @@ export default function CategoryPage() {
         fetchCategory()
     }, [params.slug])
 
+    // --- Client Side Filtering Logic (Temporary until API Update) ---
+    const filterProducts = (products: Product[]) => {
+        let filtered = [...products];
+
+        // Price Filter
+        const minPrice = searchParams.get('min_price')
+        const maxPrice = searchParams.get('max_price')
+        if (minPrice) filtered = filtered.filter(p => p.price >= Number(minPrice))
+        if (maxPrice) filtered = filtered.filter(p => p.price <= Number(maxPrice))
+
+        // Rating Filter
+        const minRating = searchParams.get('rating')
+        if (minRating) filtered = filtered.filter(p => (p.rating || 0) >= Number(minRating))
+
+        return filtered;
+    }
+
     const sortProducts = (products: Product[]) => {
         switch (sortBy) {
             case 'price-low':
@@ -61,7 +84,7 @@ export default function CategoryPage() {
             case 'price-high':
                 return [...products].sort((a, b) => b.price - a.price)
             case 'name':
-                return [...products].sort((a, b) => a.name_ar.localeCompare(b.name_ar))
+                return [...products].sort((a, b) => (locale === 'ar' ? a.name_ar : a.name).localeCompare(locale === 'ar' ? b.name_ar : b.name))
             default:
                 return products
         }
@@ -79,22 +102,23 @@ export default function CategoryPage() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">القسم غير موجود</h1>
-                    <Link href="/" className="btn-primary">العودة للرئيسية</Link>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">{t('category_not_found') || 'القسم غير موجود'}</h1>
+                    <Link href="/" className="px-6 py-2 bg-primary-600 text-white rounded-lg">{t('home')}</Link>
                 </div>
             </div>
         )
     }
 
-    const sortedProducts = sortProducts(category.products || [])
+    const filteredProducts = filterProducts(category.products || [])
+    const sortedProducts = sortProducts(filteredProducts)
 
     return (
         <div className="container mx-auto px-4 py-8">
             {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-                <Link href="/" className="hover:text-primary-500">الرئيسية</Link>
-                <ChevronRight className="w-4 h-4" />
-                <span className="text-gray-900">{category.name_ar}</span>
+                <Link href="/" className="hover:text-primary-500">{t('home')}</Link>
+                <ChevronRight className={`w-4 h-4 ${locale === 'en' ? 'rotate-180' : ''}`} />
+                <span className="text-gray-900">{locale === 'ar' ? category.name_ar : category.name}</span>
             </nav>
 
             {/* Header */}
@@ -102,81 +126,100 @@ export default function CategoryPage() {
                 <div className="flex items-center gap-4">
                     <span className="text-6xl">{category.icon}</span>
                     <div>
-                        <h1 className="text-4xl font-bold mb-2">{category.name_ar}</h1>
-                        <p className="opacity-80">{sortedProducts.length} منتج</p>
+                        <h1 className="text-4xl font-bold mb-2">{locale === 'ar' ? category.name_ar : category.name}</h1>
+                        <p className="opacity-80">{sortedProducts.length} {t('products') || 'منتج'}</p>
                     </div>
                 </div>
             </div>
 
-            {/* Filters Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-white rounded-xl shadow-sm">
-                <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50">
-                        <SlidersHorizontal className="w-5 h-5" />
-                        <span>الفلاتر</span>
-                    </button>
-                    <span className="text-gray-500">{sortedProducts.length} منتج</span>
-                </div>
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* Sidebar (Desktop) */}
+                <aside className="hidden lg:block w-1/4 min-w-[280px]">
+                    <FilterSidebar />
+                </aside>
 
-                <div className="flex items-center gap-4">
-                    {/* Sort */}
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                    >
-                        <option value="default">الترتيب الافتراضي</option>
-                        <option value="price-low">السعر: من الأقل للأعلى</option>
-                        <option value="price-high">السعر: من الأعلى للأقل</option>
-                        <option value="name">الاسم</option>
-                    </select>
+                {/* Main Content */}
+                <div className="flex-1">
+                    {/* Filters Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className="lg:hidden flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                            >
+                                <SlidersHorizontal className="w-5 h-5" />
+                                <span>{t('filter_by')}</span>
+                            </button>
+                            <span className="text-gray-500 text-sm hidden sm:block">{sortedProducts.length} {t('products')}</span>
+                        </div>
 
-                    {/* View Mode */}
-                    <div className="flex border rounded-lg overflow-hidden">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 ${viewMode === 'grid' ? 'bg-primary-500 text-white' : 'hover:bg-gray-50'}`}
-                        >
-                            <Grid className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2 ${viewMode === 'list' ? 'bg-primary-500 text-white' : 'hover:bg-gray-50'}`}
-                        >
-                            <List className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-4 ml-auto">
+                            {/* Sort */}
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-gray-50"
+                            >
+                                <option value="default">{t('sort_default') || 'الترتيب الافتراضي'}</option>
+                                <option value="price-low">{t('price_low') || 'السعر: من الأقل للأعلى'}</option>
+                                <option value="price-high">{t('price_high') || 'السعر: من الأعلى للأقل'}</option>
+                            </select>
+
+                            {/* View Mode */}
+                            <div className="flex border rounded-lg overflow-hidden">
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-2 ${viewMode === 'grid' ? 'bg-primary-500 text-white' : 'hover:bg-gray-50'}`}
+                                >
+                                    <Grid className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`p-2 ${viewMode === 'list' ? 'bg-primary-500 text-white' : 'hover:bg-gray-50'}`}
+                                >
+                                    <List className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Mobile Filters (Collapsible) */}
+                    {showFilters && (
+                        <div className="lg:hidden mb-6">
+                            <FilterSidebar />
+                        </div>
+                    )}
+
+                    {/* Products Grid */}
+                    {sortedProducts.length > 0 ? (
+                        <div className={`grid gap-6 ${viewMode === 'grid'
+                            ? 'grid-cols-2 md:grid-cols-3'
+                            : 'grid-cols-1'
+                            }`}>
+                            {sortedProducts.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    id={product.id}
+                                    name={product.name}
+                                    nameAr={product.name_ar}
+                                    price={product.price}
+                                    comparePrice={product.compare_price}
+                                    image={product.images?.[0] || ''}
+                                    category={product.category}
+                                    badge={product.badge}
+                                    rating={product.rating}
+                                    reviewCount={product.reviews_count}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-200">
+                            <p className="text-gray-500 text-lg mb-4">{t('no_products_found') || 'لا توجد منتجات تطابق الفلاتر الحالية'}</p>
+                            <Link href="/" className="text-primary-600 font-bold hover:underline">{t('clear_filters') || 'مسح الفلاتر'}</Link>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Products */}
-            {sortedProducts.length > 0 ? (
-                <div className={`grid gap-6 ${viewMode === 'grid'
-                        ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-                        : 'grid-cols-1'
-                    }`}>
-                    {sortedProducts.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            id={product.id}
-                            name={product.name}
-                            nameAr={product.name_ar}
-                            price={product.price}
-                            comparePrice={product.compare_price}
-                            image={product.images?.[0] || ''}
-                            category={product.category}
-                            badge={product.badge}
-                            rating={product.rating}
-                            reviewCount={product.reviews_count}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16">
-                    <p className="text-gray-500 text-lg">لا توجد منتجات في هذا القسم</p>
-                    <Link href="/" className="btn-primary mt-4 inline-block">تصفح المنتجات</Link>
-                </div>
-            )}
         </div>
     )
 }
