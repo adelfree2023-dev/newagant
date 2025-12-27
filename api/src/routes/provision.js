@@ -136,4 +136,22 @@ router.get('/migrate-cms', async (req, res) => {
     }
 });
 
+// MIGRATION HELPER (Theme Engine)
+router.get('/migrate-themes', async (req, res) => {
+    try {
+        const { query } = require('../db');
+        await query(`
+            ALTER TABLE tenants 
+            ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'modern';
+        `);
+        await query(`
+            ALTER TABLE tenants 
+            ADD COLUMN IF NOT EXISTS theme_config JSONB DEFAULT '{}';
+        `);
+        res.json({ success: true, message: 'Theme columns added' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;
