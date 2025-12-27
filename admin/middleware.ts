@@ -2,24 +2,25 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-    // Public paths that don't satisfy auth
-    const publicPaths = ['/login', '/register', '/forgot-password', '/_next', '/favicon.ico']
+    // Public paths that don't require auth
+    const publicPaths = ['/login', '/_next', '/favicon.ico', '/api']
 
     const isPublicPath = publicPaths.some(path =>
-        request.nextUrl.pathname.startsWith(path) || request.nextUrl.pathname === '/'
+        request.nextUrl.pathname.startsWith(path)
     )
 
-    const token = request.cookies.get('token')?.value
+    // Get token from cookies or localStorage backup
+    const token = request.cookies.get('admin_token')?.value
 
     // 1. If trying to access protected route without token -> Redirect to Login
     if (!isPublicPath && !token) {
-        const loginUrl = new URL('/', request.url)
-        // loginUrl.searchParams.set('from', request.nextUrl.pathname)
+        const loginUrl = new URL('/login', request.url)
+        loginUrl.searchParams.set('redirect', request.nextUrl.pathname)
         return NextResponse.redirect(loginUrl)
     }
 
-    // 2. If trying to access Login/Register WITH token -> Redirect to Dashboard
-    if (isPublicPath && token && request.nextUrl.pathname === '/') {
+    // 2. If on login WITH token -> Redirect to Dashboard
+    if (request.nextUrl.pathname === '/login' && token) {
         return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
@@ -29,7 +30,7 @@ export function middleware(request: NextRequest) {
 export const config = {
     matcher: [
         /*
-         * Match all request paths except for the ones starting with:
+         * Match all request paths except:
          * - api (API routes)
          * - _next/static (static files)
          * - _next/image (image optimization files)

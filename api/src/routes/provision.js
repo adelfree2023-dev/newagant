@@ -74,8 +74,8 @@ router.post('/store', async (req, res) => {
                 user: result.user,
                 token,
                 urls: {
-                    admin: `http://localhost:3002`, // In production: http://${subdomain}.admin.coreflex.io
-                    store: `http://localhost:3001`  // In production: http://${subdomain}.coreflex.io
+                    admin: `http://35.226.47.16:3001?tenant=${subdomain}`,
+                    store: `http://35.226.47.16:3000?tenant=${subdomain}`
                 }
             }
         });

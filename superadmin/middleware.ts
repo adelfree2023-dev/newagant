@@ -2,24 +2,26 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-    // Public paths
-    const publicPaths = ['/login', '/_next', '/favicon.ico']
+    // Public paths that don't require auth
+    const publicPaths = ['/login', '/_next', '/favicon.ico', '/api']
 
     const isPublicPath = publicPaths.some(path =>
-        request.nextUrl.pathname.startsWith(path) || request.nextUrl.pathname === '/'
+        request.nextUrl.pathname.startsWith(path)
     )
 
-    const token = request.cookies.get('token')?.value
+    // Get token from cookies
+    const token = request.cookies.get('superadmin_token')?.value
 
     // 1. If trying to access protected route without token -> Redirect to Login
     if (!isPublicPath && !token) {
-        const loginUrl = new URL('/', request.url)
+        const loginUrl = new URL('/login', request.url)
+        loginUrl.searchParams.set('redirect', request.nextUrl.pathname)
         return NextResponse.redirect(loginUrl)
     }
 
-    // 2. If trying to access Login WITH token -> Redirect to Dashboard
-    if (isPublicPath && token && request.nextUrl.pathname === '/') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+    // 2. If on login WITH token -> Redirect to Dashboard
+    if (request.nextUrl.pathname === '/login' && token) {
+        return NextResponse.redirect(new URL('/', request.url))
     }
 
     return NextResponse.next()

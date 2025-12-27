@@ -1,44 +1,78 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/context/AuthContext'
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
-    const { login } = useAuth()
+    const router = useRouter()
+    const searchParams = useSearchParams()
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
     const [formData, setFormData] = useState({ email: '', password: '', remember: false })
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://35.226.47.16:8000'
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
         setIsLoading(true)
 
-        const result = await login(formData.email, formData.password)
+        try {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password
+                })
+            })
 
-        if (!result.success) {
-            setError(result.error || 'حدث خطأ غير متوقع')
+            const data = await res.json()
+
+            if (data.success && data.token) {
+                // Check if user is superadmin
+                if (data.user?.role !== 'superadmin') {
+                    setError('هذا الحساب ليس صلاحية Super Admin')
+                    setIsLoading(false)
+                    return
+                }
+
+                // Save token in cookie for middleware
+                document.cookie = `superadmin_token=${data.token}; path=/; max-age=${formData.remember ? 604800 : 86400}`
+                // Also save in localStorage
+                localStorage.setItem('superadmin_token', data.token)
+                localStorage.setItem('superadmin_user', JSON.stringify(data.user))
+
+                // Redirect
+                const redirect = searchParams.get('redirect') || '/'
+                router.push(redirect)
+            } else {
+                setError(data.error || 'بيانات الدخول غير صحيحة')
+            }
+        } catch (err) {
+            console.error('Login error:', err)
+            setError('فشل الاتصال بالسيرفر')
+        } finally {
+            setIsLoading(false)
         }
-
-        setIsLoading(false)
     }
 
     return (
-        <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/30">
                         <Shield className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white">CoreFlex</h1>
-                    <p className="text-gray-400 mt-1">لوحة تحكم Super Admin</p>
+                    <h1 className="text-3xl font-bold text-white">CoreFlex</h1>
+                    <p className="text-gray-400 mt-2">لوحة تحكم Super Admin</p>
                 </div>
 
                 {/* Form */}
-                <div className="bg-dark-800 rounded-2xl p-8 shadow-xl border border-dark-700">
+                <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
                     <h2 className="text-xl font-bold text-white mb-6 text-center">تسجيل الدخول</h2>
 
                     {/* Error Message */}
@@ -51,14 +85,14 @@ export default function LoginPage() {
 
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div>
-                            <label className="block mb-2 text-sm text-gray-400">البريد الإلكتروني</label>
+                            <label className="block mb-2 text-sm text-gray-300">البريد الإلكتروني</label>
                             <div className="relative">
-                                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="w-full bg-dark-700 border border-dark-600 rounded-lg py-3 pr-10 pl-4 text-white placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl py-3 pr-12 pl-4 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
                                     placeholder="admin@coreflex.io"
                                     dir="ltr"
                                     required
@@ -66,16 +100,15 @@ export default function LoginPage() {
                                 />
                             </div>
                         </div>
-
                         <div>
-                            <label className="block mb-2 text-sm text-gray-400">كلمة المرور</label>
+                            <label className="block mb-2 text-sm text-gray-300">كلمة المرور</label>
                             <div className="relative">
-                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full bg-dark-700 border border-dark-600 rounded-lg py-3 pr-10 pl-12 text-white placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                                    className="w-full bg-white/10 border border-white/20 rounded-xl py-3 pr-12 pl-12 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
                                     placeholder="••••••••"
                                     dir="ltr"
                                     required
@@ -84,48 +117,45 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.remember}
-                                    onChange={(e) => setFormData({ ...formData, remember: e.target.checked })}
-                                    className="w-4 h-4 rounded bg-dark-700 border-dark-600 text-primary-600"
-                                />
-                                <span className="text-sm text-gray-400">تذكرني</span>
-                            </label>
-                            <a href="#" className="text-sm text-primary-500 hover:underline">نسيت كلمة المرور؟</a>
-                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.remember}
+                                onChange={(e) => setFormData({ ...formData, remember: e.target.checked })}
+                                className="w-4 h-4 rounded bg-white/10 border-white/20 text-purple-600"
+                            />
+                            <span className="text-sm text-gray-300">تذكرني</span>
+                        </label>
 
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-xl font-medium hover:from-purple-700 hover:to-purple-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 disabled:opacity-50"
                         >
                             {isLoading ? (
                                 <>
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
                                     جاري تسجيل الدخول...
                                 </>
                             ) : (
                                 <>
-                                    تسجيل الدخول
                                     <ArrowRight className="w-5 h-5" />
+                                    تسجيل الدخول
                                 </>
                             )}
                         </button>
                     </form>
                 </div>
 
-                <p className="text-center text-gray-500 text-sm mt-6">
-                    © 2024 CoreFlex. جميع الحقوق محفوظة
+                <p className="text-center text-gray-500 text-sm mt-8">
+                    © 2024 CoreFlex Platform
                 </p>
             </div>
         </div>
