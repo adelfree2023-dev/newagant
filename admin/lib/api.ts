@@ -74,6 +74,20 @@ export const adminApi = {
     settings: {
         get: () => api.get('/admin/store/config'),
         update: (data: any) => api.put('/admin/store/config', data),
+    },
+    staff: {
+        list: async () => {
+            const res = await api.get('/staff');
+            return res.data;
+        },
+        create: async (data: any) => {
+            const res = await api.post('/staff', data);
+            return res.data;
+        },
+        delete: async (id: string) => {
+            const res = await api.delete(`/staff/${id}`);
+            return res.data;
+        }
     }
 };
 

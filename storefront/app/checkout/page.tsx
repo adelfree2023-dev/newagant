@@ -261,12 +261,25 @@ export default function CheckoutPage() {
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium mb-1">ملاحظات إضافية</label>
-                                        <textarea
-                                            value={address.notes}
-                                            onChange={(e) => setAddress({ ...address, notes: e.target.value })}
+                                        <label className="block text-sm font-medium mb-1">الشارع *</label>
+                                        <input
+                                            type="text"
+                                            value={address.street}
+                                            onChange={(e) => setAddress({ ...address, street: e.target.value })}
                                             className="w-full px-4 py-3 border rounded-lg"
-                                            rows={2}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium mb-1">
+                                            رابط الموقع (Google Maps) 📍
+                                            <span className="text-xs text-gray-500 font-normal mr-2">(اختياري، لتسهيل وصول المندوب)</span>
+                                        </label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://maps.google.com/..."
+                                            value={address.notes} // Storing maps link in notes for now, or append to address
+                                            onChange={(e) => setAddress({ ...address, notes: e.target.value })}
+                                            className="w-full px-4 py-3 border rounded-lg text-left dir-ltr"
                                         />
                                     </div>
                                 </div>

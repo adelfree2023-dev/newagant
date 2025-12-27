@@ -247,9 +247,23 @@ function OrderModal({ order, onClose, onUpdateStatus }: OrderModalProps) {
                         <p className="text-sm text-gray-500">{order.customer_email}</p>
                         {order.shipping_address && (
                             <p className="text-sm text-gray-500 mt-2">
-                                {typeof order.shipping_address === 'string'
-                                    ? JSON.parse(order.shipping_address).address
-                                    : order.shipping_address.address}
+                                {(() => {
+                                    try {
+                                        const addr = typeof order.shipping_address === 'string'
+                                            ? JSON.parse(order.shipping_address)
+                                            : order.shipping_address;
+                                        return (
+                                            <>
+                                                {addr.address}<br />
+                                                {order.notes && order.notes.includes('http') && (
+                                                    <a href={order.notes} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 mt-1">
+                                                        📍 عرض الموقع على الخريطة
+                                                    </a>
+                                                )}
+                                            </>
+                                        );
+                                    } catch (e) { return 'عنوان غير صالح'; }
+                                })()}
                             </p>
                         )}
                     </div>
