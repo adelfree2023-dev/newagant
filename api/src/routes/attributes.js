@@ -1,4 +1,7 @@
-// ... (Existing Routes)
+const express = require('express');
+const router = express.Router();
+const { query } = require('../db');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // POST /api/attributes/product/:productId - Update Product Attributes
 router.post('/product/:productId', authenticate, requireAdmin, async (req, res) => {
