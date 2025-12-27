@@ -12,7 +12,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/lib/api';
+import { storeApi } from '@/lib/api';
+import FeatureGuard from '@/components/FeatureGuard';
 
 interface ShippingAddress {
     name: string;
@@ -401,19 +402,21 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
 
-                            <div className="mt-6">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="كود الخصم"
-                                        value={couponCode}
-                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                        className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                                    />
-                                    <button onClick={applyCoupon} className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-bold">تطبيق</button>
+                            <FeatureGuard feature="modules.coupons">
+                                <div className="mt-6">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="كود الخصم"
+                                            value={couponCode}
+                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                            className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                        />
+                                        <button onClick={applyCoupon} className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-bold">تطبيق</button>
+                                    </div>
+                                    {couponError && <p className="text-red-500 text-xs mt-1">{couponError}</p>}
                                 </div>
-                                {couponError && <p className="text-red-500 text-xs mt-1">{couponError}</p>}
-                            </div>
+                            </FeatureGuard>
                         </div>
                     </div>
                 </div>

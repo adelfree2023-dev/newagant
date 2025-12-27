@@ -82,6 +82,17 @@ export const storeApi = {
             }
         }
     },
+    coupons: {
+        validate: async (code: string, total: number) => {
+            try {
+                // Ensure backend has POST /api/coupons/validate
+                const res = await api.post('/coupons/validate', { code, total });
+                return res.data;
+            } catch (e: any) {
+                return { success: false, error: e.response?.data?.error || 'Invalid coupon' };
+            }
+        }
+    },
     store: {
         config: async () => {
             try {

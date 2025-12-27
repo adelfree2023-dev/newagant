@@ -30,6 +30,7 @@ interface StoreConfig {
         currency?: string;
         language?: string;
     };
+    features?: Record<string, any>;
 }
 
 interface StoreConfigContextType {

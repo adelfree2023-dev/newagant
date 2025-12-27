@@ -7,12 +7,22 @@
  * يجب وضعه في: admin/app/layout.tsx
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { adminApi } from '@/lib/api';
 import './globals.css';
 
-const menuItems = [
+// Feature mapping: Which feature controls which menu item?
+// No mapping = always visible
+const FEATURE_MAP: Record<string, string> = {
+    '/orders': 'modules.orders', // Just an example, maybe orders is core?
+    '/coupons': 'modules.coupons',
+    '/settings': 'admin.settings',
+    '/products': 'admin.products'
+};
+
+const defaultMenuItems = [
     { href: '/dashboard', icon: '📊', label: 'لوحة التحكم' },
     { href: '/orders', icon: '📦', label: 'الطلبات', badge: 'new' },
     { href: '/products', icon: '🛍️', label: 'المنتجات' },
@@ -29,7 +39,38 @@ export default function AdminLayout({
     children: React.ReactNode;
 }) {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [features, setFeatures] = useState<Record<string, any>>({});
+    const [loadingFeatures, setLoadingFeatures] = useState(true);
     const pathname = usePathname();
+
+    useEffect(() => {
+        // Load features from API
+        adminApi.settings.get().then(res => {
+            if (res.data && res.data.features) {
+                setFeatures(res.data.features);
+            }
+            setLoadingFeatures(false);
+        }).catch(() => setLoadingFeatures(false));
+    }, []);
+
+    // Helper to check if feature is enabled (dot notation)
+    const isFeatureEnabled = (path?: string) => {
+        if (!path) return true; // No restriction
+        if (Object.keys(features).length === 0) return true; // Default to visible if no features loaded yet (or migration not run)
+
+        const parts = path.split('.');
+        let current = features;
+        for (const part of parts) {
+            if (current[part] === false) return false;
+            if (current[part] === undefined) return true; // Default true if not defined
+            current = current[part];
+        }
+        return true;
+    };
+
+    const visibleMenuItems = defaultMenuItems.filter(item =>
+        isFeatureEnabled(FEATURE_MAP[item.href])
+    );
 
     return (
         <html lang="ar" dir="rtl">
@@ -52,15 +93,15 @@ export default function AdminLayout({
 
                         {/* Menu */}
                         <nav className="p-4 space-y-2">
-                            {menuItems.map((item) => {
+                            {visibleMenuItems.map((item) => {
                                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                                 return (
                                     <Link
                                         key={item.href}
                                         href={item.href}
                                         className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                                ? 'bg-primary-600 text-white'
-                                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                            ? 'bg-primary-600 text-white'
+                                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                             }`}
                                     >
                                         <span className="text-xl">{item.icon}</span>
@@ -98,7 +139,7 @@ export default function AdminLayout({
                                     ☰
                                 </button>
                                 <h1 className="text-lg font-medium text-gray-800">
-                                    {menuItems.find(item => pathname.startsWith(item.href))?.label || 'لوحة التحكم'}
+                                    {visibleMenuItems.find(item => pathname.startsWith(item.href))?.label || 'لوحة التحكم'}
                                 </h1>
                             </div>
 

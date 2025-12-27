@@ -59,6 +59,15 @@ const Tenant = {
         return result.rows[0];
     },
 
+    // Update features (Governance)
+    async updateFeatures(id, features) {
+        const result = await query(
+            `UPDATE tenants SET features = $2, updated_at = NOW() WHERE id = $1 RETURNING features`,
+            [id, features]
+        );
+        return result.rows[0].features;
+    },
+
     // Update status
     async updateStatus(id, status) {
         const result = await query(

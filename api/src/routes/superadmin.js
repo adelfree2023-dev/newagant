@@ -81,6 +81,7 @@ router.put('/tenants/:id/status', async (req, res) => {
     }
 });
 
+// Update Tenant Plan
 router.put('/tenants/:id/plan', async (req, res) => {
     try {
         const { plan } = req.body;
@@ -89,6 +90,18 @@ router.put('/tenants/:id/plan', async (req, res) => {
         res.json({ success: true, data: tenant });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Failed to update plan' });
+    }
+});
+
+// Update Tenant Features (Governance)
+router.put('/tenants/:id/features', async (req, res) => {
+    try {
+        const { features } = req.body;
+        const updatedFeatures = await Tenant.updateFeatures(req.params.id, features);
+        console.log(`🛡️ Governance update for tenant ${req.params.id}`);
+        res.json({ success: true, data: updatedFeatures });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to update features' });
     }
 });
 

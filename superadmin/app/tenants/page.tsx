@@ -12,7 +12,8 @@ import {
     Trash2,
     ExternalLink,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Shield
 } from 'lucide-react'
 
 const tenants = [
@@ -154,6 +155,9 @@ export default function TenantsPage() {
                                         <button className="p-2 hover:bg-gray-100 rounded-lg" title="تعديل">
                                             <Edit className="w-4 h-4 text-gray-500" />
                                         </button>
+                                        <Link href={`/tenants/${tenant.id}/features`} className="p-2 hover:bg-indigo-50 rounded-lg text-indigo-600" title="الصلاحيات والميزات">
+                                            <Shield className="w-4 h-4" />
+                                        </Link>
                                         <button className="p-2 hover:bg-yellow-50 rounded-lg" title="تعليق/تفعيل">
                                             <Power className="w-4 h-4 text-yellow-600" />
                                         </button>

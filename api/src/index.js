@@ -136,9 +136,13 @@ app.get('/api/store/config', tenantMiddleware, async (req, res) => {
                 subdomain: 'demo',
                 primary_color: '#DC2626',
                 secondary_color: '#F59E0B',
-                settings: { currency: 'SAR', language: 'ar' }
+                settings: { currency: 'SAR', language: 'ar' },
+                features: {}
             });
         }
+
+        // Ensure features object exists
+        tenant.features = tenant.features || {};
 
         res.json(tenant);
     } catch (error) {
