@@ -1,7 +1,8 @@
 'use client';
 
 import './globals.css'
-import { AuthProvider } from '@/context/AuthContext'
+// Auth temporarily disabled - will be re-enabled in Phase 3
+// import { AuthProvider } from '@/context/AuthContext'
 import { usePathname } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
@@ -40,9 +41,8 @@ export default function RootLayout({
                 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
             </head>
             <body className="bg-gray-100 min-h-screen font-tajawal">
-                <AuthProvider>
-                    <LayoutContent>{children}</LayoutContent>
-                </AuthProvider>
+                {/* AuthProvider disabled temporarily - Phase 3 will re-enable */}
+                <LayoutContent>{children}</LayoutContent>
             </body>
         </html>
     )
