@@ -70,6 +70,7 @@ app.use('/api/pages', require('./routes/pages'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/attributes', require('./routes/attributes'));
 app.use('/api/staff', require('./routes/staff'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 // ============ Homepage Data (Combined) ============
 app.get('/api/homepage', tenantMiddleware, async (req, res) => {

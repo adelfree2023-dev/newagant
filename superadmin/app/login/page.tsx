@@ -1,17 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
+    const { login } = useAuth()
     const [showPassword, setShowPassword] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState('')
     const [formData, setFormData] = useState({ email: '', password: '', remember: false })
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log('Login:', formData)
-        // Redirect to dashboard
-        window.location.href = '/'
+        setError('')
+        setIsLoading(true)
+
+        const result = await login(formData.email, formData.password)
+
+        if (!result.success) {
+            setError(result.error || 'حدث خطأ غير متوقع')
+        }
+
+        setIsLoading(false)
     }
 
     return (
@@ -30,6 +41,14 @@ export default function LoginPage() {
                 <div className="bg-dark-800 rounded-2xl p-8 shadow-xl border border-dark-700">
                     <h2 className="text-xl font-bold text-white mb-6 text-center">تسجيل الدخول</h2>
 
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 flex items-center gap-3 mb-6">
+                            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                            <p className="text-red-300 text-sm">{error}</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div>
                             <label className="block mb-2 text-sm text-gray-400">البريد الإلكتروني</label>
@@ -43,6 +62,7 @@ export default function LoginPage() {
                                     placeholder="admin@coreflex.io"
                                     dir="ltr"
                                     required
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
@@ -59,6 +79,7 @@ export default function LoginPage() {
                                     placeholder="••••••••"
                                     dir="ltr"
                                     required
+                                    disabled={isLoading}
                                 />
                                 <button
                                     type="button"
@@ -85,10 +106,20 @@ export default function LoginPage() {
 
                         <button
                             type="submit"
-                            className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 transition flex items-center justify-center gap-2"
+                            disabled={isLoading}
+                            className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            تسجيل الدخول
-                            <ArrowRight className="w-5 h-5" />
+                            {isLoading ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    جاري تسجيل الدخول...
+                                </>
+                            ) : (
+                                <>
+                                    تسجيل الدخول
+                                    <ArrowRight className="w-5 h-5" />
+                                </>
+                            )}
                         </button>
                     </form>
                 </div>

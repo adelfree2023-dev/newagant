@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { adminApi } from '@/lib/api';
+import { AuthProvider, useAuth, ProtectedRoute } from '@/context/AuthContext';
 import './globals.css';
 
 // Feature mapping: Which feature controls which menu item?

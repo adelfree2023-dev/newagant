@@ -1,11 +1,30 @@
-import type { Metadata } from 'next'
+'use client';
+
 import './globals.css'
+import { AuthProvider } from '@/context/AuthContext'
+import { usePathname } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 
-export const metadata: Metadata = {
-    title: 'Super Admin | CoreFlex',
-    description: 'إدارة منصة CoreFlex',
+function LayoutContent({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
+    const isLoginPage = pathname === '/login';
+
+    if (isLoginPage) {
+        return <>{children}</>;
+    }
+
+    return (
+        <div className="flex">
+            <Sidebar />
+            <div className="flex-1 mr-64">
+                <Header />
+                <main className="p-6">
+                    {children}
+                </main>
+            </div>
+        </div>
+    );
 }
 
 export default function RootLayout({
@@ -15,16 +34,15 @@ export default function RootLayout({
 }) {
     return (
         <html lang="ar" dir="rtl">
-            <body className="bg-gray-100 min-h-screen">
-                <div className="flex">
-                    <Sidebar />
-                    <div className="flex-1 mr-64">
-                        <Header />
-                        <main className="p-6">
-                            {children}
-                        </main>
-                    </div>
-                </div>
+            <head>
+                <title>Super Admin | CoreFlex</title>
+                <meta name="description" content="إدارة منصة CoreFlex" />
+                <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
+            </head>
+            <body className="bg-gray-100 min-h-screen font-tajawal">
+                <AuthProvider>
+                    <LayoutContent>{children}</LayoutContent>
+                </AuthProvider>
             </body>
         </html>
     )
