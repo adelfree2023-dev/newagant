@@ -39,10 +39,10 @@ router.post('/store', async (req, res) => {
 
             // 3. Create Tenant
             const tenantRes = await client.query(
-                `INSERT INTO tenants (name, subdomain, slug, business_type, plan, status, primary_color, secondary_color)
-                 VALUES ($1, $2, $2, $3, $4, 'active', '#DC2626', '#F59E0B')
+                `INSERT INTO tenants (name, subdomain, slug, email, business_type, plan, status, primary_color, secondary_color)
+                 VALUES ($1, $2, $2, $3, $4, $5, 'active', '#DC2626', '#F59E0B')
                  RETURNING *`,
-                [store_name, subdomain, business_type, plan_slug || 'free']
+                [store_name, subdomain, owner.email, business_type, plan_slug || 'free']
             );
             const tenant = tenantRes.rows[0];
 
