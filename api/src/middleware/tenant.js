@@ -100,7 +100,26 @@ async function tenantMiddleware(req, res, next) {
             tenant = await extractTenantFromCustomDomain(req.headers.host);
         }
 
-        // 4. Check JWT token
+        // 4. FALLBACK: If we are accessing via IP or Localhost and no tenant found
+        // Pick the most recent active tenant to make the system usable
+        if (!tenant) {
+            const host = req.headers.host || '';
+            // Check if IP (IPv4 or IPv6) or localhost
+            const isIpOrLocal = /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/.test(host) || host.includes('localhost');
+
+            if (isIpOrLocal) {
+                const fallbackResult = await db.query(
+                    'SELECT id, slug, name, status, settings FROM tenants WHERE status = $1 ORDER BY created_at ASC LIMIT 1',
+                    ['active']
+                );
+                tenant = fallbackResult.rows[0];
+                if (tenant) {
+                    // console.log(`[TENANT] Using fallback tenant: ${tenant.slug}`);
+                }
+            }
+        }
+
+        // 5. Check JWT token
         if (!tenant && req.user?.tenantId) {
             tenant = await getTenantById(req.user.tenantId);
         }

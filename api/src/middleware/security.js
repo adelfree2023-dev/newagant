@@ -79,6 +79,11 @@ function isBlocked(ip) {
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: (req) => {
+        // Whitelist localhost for testing
+        if (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1') {
+            return 10000; // High limit for local testing
+        }
+
         const failures = getFailures(req.ip);
         if (failures > 5) return 10;  // Reduced limit
         if (failures > 3) return 50;  // Slightly reduced
@@ -105,7 +110,13 @@ const generalLimiter = rateLimit({
 // ============================================
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // 10 attempts per window
+    max: (req) => {
+        // Whitelist localhost for testing
+        if (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1') {
+            return 1000;
+        }
+        return 10; // 10 attempts per window
+    },
     message: {
         error: 'Too many login attempts. Please try again later.',
     },

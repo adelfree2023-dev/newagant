@@ -65,6 +65,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/superadmin', superAdminRoutes);
+app.use('/api/provision', require('./routes/provision'));
 
 // ============ Homepage Data (Combined) ============
 app.get('/api/homepage', tenantMiddleware, async (req, res) => {
