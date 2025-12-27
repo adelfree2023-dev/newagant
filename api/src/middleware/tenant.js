@@ -87,7 +87,12 @@ async function tenantMiddleware(req, res, next) {
             tenant = await getTenantById(headerTenant);
         }
 
-        // 2. Check subdomain
+        // 2. Check query parameter (?tenant=slug) - NEW: For easy testing
+        if (!tenant && req.query.tenant) {
+            tenant = await getTenantBySlug(req.query.tenant);
+        }
+
+        // 3. Check subdomain
         if (!tenant) {
             const slug = extractTenantFromHost(req.headers.host);
             if (slug) {
@@ -95,7 +100,7 @@ async function tenantMiddleware(req, res, next) {
             }
         }
 
-        // 3. Check custom domain
+        // 4. Check custom domain
         if (!tenant) {
             tenant = await extractTenantFromCustomDomain(req.headers.host);
         }
