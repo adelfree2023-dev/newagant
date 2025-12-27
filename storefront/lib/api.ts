@@ -25,9 +25,29 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Types
+export interface Product {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    images: string[];
+}
+
+export interface CartItem {
+    id: string;
+    product_id: string;
+    quantity: number;
+    product: Product;
+}
+
 export const storeApi = {
     products: {
         list: async (params: any = {}) => {
+            const res = await api.get('/products', { params });
+            return res.data;
+        },
+        getAll: async (params: any = {}) => { // Alias for backward compatibility if needed
             const res = await api.get('/products', { params });
             return res.data;
         },
@@ -36,22 +56,51 @@ export const storeApi = {
             return res.data;
         }
     },
+    orders: {
+        track: async (orderId: string) => {
+            const res = await api.get(`/tracking/${orderId}`);
+            return res.data;
+        }
+    },
+    categories: {
+        list: async () => {
+            const res = await api.get('/categories');
+            return res.data.categories;
+        },
+        getAll: async () => { // Alias
+            const res = await api.get('/categories');
+            return res.data.categories;
+        }
+    },
+    pages: {
+        get: async () => {
+            try {
+                const res = await api.get('/pages');
+                return res.data.data;
+            } catch (e) {
+                return {};
+            }
+        }
+    },
     store: {
         config: async () => {
-            // Fetch public store settings (name, colors, logo)
-            // This endpoint might need to be created/verified in backend
-            // For now assuming /api/store-config exists or similar public endpoint
-            // We'll use a mock or generic endpoint if not.
-            // It seems backend has `req.tenant` so any public route works.
-            // Let's assume a basic check.
             try {
-                const res = await api.get('/categories'); // Just a test public route for now
-                return { success: true };
+                const res = await api.get('/store/config');
+                return res.data;
             } catch (e) {
-                return { success: false };
+                console.error('Failed to load store config', e);
+                return null;
             }
         }
     }
+};
+
+export const cartApi = {
+    get: async () => api.get('/cart'),
+    add: async (productId: string, quantity: number) => api.post('/cart', { productId, quantity }),
+    update: async (itemId: string, quantity: number) => api.put(`/cart/${itemId}`, { quantity }),
+    remove: async (itemId: string) => api.delete(`/cart/${itemId}`),
+    clear: async () => api.post('/cart/clear')
 };
 
 export default api;

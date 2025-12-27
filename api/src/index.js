@@ -66,6 +66,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/provision', require('./routes/provision'));
+app.use('/api/pages', require('./routes/pages'));
 
 // ============ Homepage Data (Combined) ============
 app.get('/api/homepage', tenantMiddleware, async (req, res) => {
@@ -158,4 +159,11 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📦 Products: /api/products`);
     console.log(`🛒 Cart: /api/cart`);
     console.log(`📋 Orders: /api/orders`);
+    console.log(`🚚 Tracking: /api/tracking`);
 });
+
+// Routes
+const trackingRoutes = require('./routes/tracking');
+const newsletterRoutes = require('./routes/newsletter');
+app.use('/api/tracking', trackingRoutes);
+app.use('/api/newsletter', newsletterRoutes);

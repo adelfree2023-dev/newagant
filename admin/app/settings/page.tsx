@@ -38,6 +38,10 @@ const settingsGroups = [
     { key: 'webhooks', label: 'Webhooks', icon: '🔗', href: '/settings/webhooks' },
     { key: 'shipping', label: 'الشحن', icon: '🚚', href: '/settings/shipping' },
     { key: 'payment', label: 'الدفع', icon: '💳', href: '/settings/payment' },
+    { key: 'pages', label: 'صفحات المتجر', icon: '📄', href: '/settings/pages' },
+    { key: 'social', label: 'زر التواصل العائم', icon: '💬', href: '/settings/social' },
+    { key: 'appearance', label: 'المظهر والتخصيص', icon: '🎨', href: '/settings/appearance' },
+    { key: 'newsletter', label: 'النشرة البريدية', icon: '📧', href: '/marketing/newsletter' },
     { key: 'notifications', label: 'الإشعارات', icon: '🔔', href: '/settings/notifications' },
 ];
 
@@ -133,8 +137,8 @@ export default function SettingsPage() {
                                 key={group.key}
                                 href={group.href}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${group.key === 'general'
-                                        ? 'bg-primary-50 text-primary-700'
-                                        : 'text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-primary-50 text-primary-700'
+                                    : 'text-gray-600 hover:bg-gray-100'
                                     }`}
                             >
                                 <span>{group.icon}</span>

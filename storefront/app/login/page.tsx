@@ -1,143 +1,104 @@
 'use client';
 
-/**
- * Storefront Login Page
- * صفحة تسجيل الدخول
- * 
- * يجب وضعه في: storefront/app/login/page.tsx
- */
-
-import { useState, Suspense } from 'react';
+import { useState } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { User, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { toast, Toaster } from 'sonner';
 
-function LoginForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const { login } = useAuth();
+export default function LoginPage() {
+    const { login, loading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirect = searchParams.get('redirect') || '/';
 
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
-        setLoading(true);
 
         try {
-            const result = await login(email, password);
-
-            if (result.error) {
-                setError(result.error);
-            } else {
+            const res = await login(email, password);
+            if (res.success) {
+                toast.success('تم تسجيل الدخول بنجاح');
                 router.push(redirect);
+            } else {
+                toast.error(res.error || 'فشل تسجيل الدخول');
             }
         } catch (err) {
-            setError('حدث خطأ في تسجيل الدخول');
-        } finally {
-            setLoading(false);
+            toast.error('حدث خطأ غير متوقع');
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900">مرحباً بعودتك!</h1>
-                    <p className="text-gray-500 mt-2">سجل دخولك للمتابعة</p>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80')] bg-cover bg-center" dir="rtl">
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm"></div>
+            <Toaster position="top-center" richColors />
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 w-full max-w-md relative z-10"
+            >
+                <div className="text-center mb-10">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بعودتك 👋</h1>
+                    <p className="text-gray-500">سجل دخولك لمتابعة طلباتك</p>
                 </div>
 
-                {/* Error Message */}
-                {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-                        {error}
-                    </div>
-                )}
-
-                {/* Login Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            البريد الإلكتروني
-                        </label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="example@email.com"
-                            required
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">البريد الإلكتروني</label>
+                        <div className="relative">
+                            <User className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full pr-12 pl-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="name@example.com"
+                                required
+                            />
+                        </div>
                     </div>
-
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            كلمة المرور
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="••••••••"
-                            required
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">كلمة المرور</label>
+                        <div className="relative">
+                            <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full pr-12 pl-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="••••••••"
+                                required
+                            />
+                        </div>
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
-                        <label className="flex items-center gap-2">
-                            <input type="checkbox" className="rounded text-primary-600" />
-                            <span className="text-gray-600">تذكرني</span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" className="rounded text-blue-600" />
+                            <span>تذكرني</span>
                         </label>
-                        <Link href="/forgot-password" className="text-primary-600 hover:underline">
-                            نسيت كلمة المرور؟
-                        </Link>
+                        <a href="#" className="text-blue-600 hover:underline">نسيت كلمة المرور؟</a>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3 bg-primary-600 text-white rounded-lg font-bold hover:bg-primary-700 disabled:bg-gray-300 transition-colors"
+                        className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg hover:shadow-xl translate-y-0 hover:-translate-y-1 disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-2"
                     >
-                        {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                        {loading ? <Loader2 className="animate-spin" /> : 'دخول'}
                     </button>
+
+                    <div className="text-center text-sm text-gray-500">
+                        ليس لديك حساب؟ <Link href="/register" className="text-blue-600 font-bold hover:underline">سجل الآن</Link>
+                    </div>
                 </form>
-
-                {/* Divider */}
-                <div className="flex items-center gap-4 my-6">
-                    <hr className="flex-1" />
-                    <span className="text-gray-400 text-sm">أو</span>
-                    <hr className="flex-1" />
-                </div>
-
-                {/* Social Login */}
-                <div className="space-y-3">
-                    <button className="w-full py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 flex items-center justify-center gap-2">
-                        <span>🔵</span> تسجيل بواسطة Google
-                    </button>
-                </div>
-
-                {/* Register Link */}
-                <p className="text-center mt-6 text-gray-600">
-                    ليس لديك حساب؟{' '}
-                    <Link href="/register" className="text-primary-600 font-medium hover:underline">
-                        إنشاء حساب جديد
-                    </Link>
-                </p>
-            </div>
+            </motion.div>
         </div>
-    );
-}
-
-export default function LoginPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">جاري التحميل...</div>}>
-            <LoginForm />
-        </Suspense>
     );
 }

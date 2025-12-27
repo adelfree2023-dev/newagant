@@ -3,8 +3,10 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Tenant = require('../models/Tenant'); // Added Tenant model
 const { tenantMiddleware } = require('../middleware/tenant');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { query } = require('../db'); // Added query
 
 router.use(tenantMiddleware);
 router.use(authenticate);
@@ -53,6 +55,49 @@ router.get('/customers', async (req, res) => {
         res.json({ success: true, data: customers });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Failed to get customers' });
+    }
+});
+
+// GET /api/admin/store/config - Get store settings
+router.get('/store/config', async (req, res) => {
+    try {
+        const tenant = await Tenant.findById(req.tenant_id);
+        res.json({ success: true, data: tenant.settings || {} });
+    } catch (error) {
+        console.error('Get config error:', error);
+        res.status(500).json({ success: false, error: 'Failed to get config' });
+    }
+});
+
+// PUT /api/admin/store/config - Update store settings
+router.put('/store/config', async (req, res) => {
+    try {
+        const newSettings = req.body;
+
+        // 1. Get current settings to merge
+        const tenant = await Tenant.findById(req.tenant_id);
+        const currentSettings = tenant.settings || {};
+
+        // 2. Deep merge (simplified)
+        const updatedSettings = {
+            ...currentSettings,
+            ...newSettings,
+            // Ensure nested objects like social_floating are verified/merged if needed
+            // customizable logic here
+        };
+
+        // 3. Update DB
+        // Assuming Tenant model doesn't have updateSettings method yet, using direct query or basic update
+        // Using direct query for specific column update is safer
+        const result = await query(
+            'UPDATE tenants SET settings = $2, updated_at = NOW() WHERE id = $1 RETURNING settings',
+            [req.tenant_id, updatedSettings]
+        );
+
+        res.json({ success: true, data: result.rows[0].settings });
+    } catch (error) {
+        console.error('Update config error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update config' });
     }
 });
 

@@ -1,101 +1,71 @@
-'use client'
+'use client';
 
-import { Store, Users, Award, Target, Heart, Globe } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { storeApi } from '@/lib/api';
+import { motion } from 'framer-motion';
+import { Info } from 'lucide-react';
 
 export default function AboutPage() {
+    const [content, setContent] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function load() {
+            try {
+                const pages = await storeApi.pages.get();
+                setContent(pages.about || '');
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, []);
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Hero */}
-            <section className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-20">
-                <div className="container mx-auto px-4 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-4">من نحن</h1>
-                    <p className="text-xl text-white/80 max-w-2xl mx-auto">
-                        نحن متجرك الإلكتروني المفضل، نسعى لتقديم أفضل المنتجات بأفضل الأسعار
-                    </p>
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" dir="rtl">
+            <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-12">
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                    >
+                        <Info className="w-8 h-8" />
+                    </motion.div>
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-4xl font-bold text-gray-900"
+                    >
+                        من نحن
+                    </motion.h1>
                 </div>
-            </section>
 
-            {/* Story */}
-            <section className="py-16">
-                <div className="container mx-auto px-4">
-                    <div className="max-w-3xl mx-auto text-center">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-6">قصتنا</h2>
-                        <p className="text-lg text-gray-600 leading-relaxed mb-6">
-                            بدأنا رحلتنا في عام 2020 برؤية واضحة: توفير تجربة تسوق استثنائية للعملاء في المملكة العربية السعودية والخليج.
-                            نؤمن بأن التسوق يجب أن يكون ممتعاً وسهلاً وآمناً.
-                        </p>
-                        <p className="text-lg text-gray-600 leading-relaxed">
-                            اليوم، نفخر بخدمة أكثر من 100,000 عميل راضٍ، ونستمر في النمو والتطور لتقديم الأفضل دائماً.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            {/* Stats */}
-            <section className="py-16 bg-white">
-                <div className="container mx-auto px-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Users className="w-8 h-8 text-primary-600" />
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900">100K+</p>
-                            <p className="text-gray-500">عميل سعيد</p>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white rounded-3xl shadow-sm p-8 md:p-12 min-h-[400px]"
+                >
+                    {loading ? (
+                        <div className="space-y-4 animate-pulse">
+                            <div className="h-4 bg-gray-100 rounded w-3/4"></div>
+                            <div className="h-4 bg-gray-100 rounded w-full"></div>
+                            <div className="h-4 bg-gray-100 rounded w-5/6"></div>
                         </div>
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Store className="w-8 h-8 text-green-600" />
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900">50K+</p>
-                            <p className="text-gray-500">منتج متوفر</p>
+                    ) : content ? (
+                        <div className="prose prose-lg max-w-none text-gray-600 leading-relaxed whitespace-pre-line">
+                            {content}
                         </div>
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Globe className="w-8 h-8 text-blue-600" />
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900">13</p>
-                            <p className="text-gray-500">منطقة تغطية</p>
+                    ) : (
+                        <div className="text-center py-20 text-gray-400">
+                            <p>لا يوجد محتوى مضاف لهذه الصفحة بعد.</p>
                         </div>
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Award className="w-8 h-8 text-yellow-600" />
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900">4.9</p>
-                            <p className="text-gray-500">تقييم العملاء</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Values */}
-            <section className="py-16">
-                <div className="container mx-auto px-4">
-                    <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">قيمنا</h2>
-                    <div className="grid md:grid-cols-3 gap-8">
-                        <div className="bg-white p-8 rounded-2xl shadow-sm text-center">
-                            <div className="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                                <Target className="w-7 h-7 text-primary-600" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">الجودة</h3>
-                            <p className="text-gray-600">نختار منتجاتنا بعناية لضمان أعلى مستويات الجودة</p>
-                        </div>
-                        <div className="bg-white p-8 rounded-2xl shadow-sm text-center">
-                            <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                                <Heart className="w-7 h-7 text-green-600" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">العميل أولاً</h3>
-                            <p className="text-gray-600">رضا العملاء هو هدفنا الأول والأخير</p>
-                        </div>
-                        <div className="bg-white p-8 rounded-2xl shadow-sm text-center">
-                            <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                                <Award className="w-7 h-7 text-blue-600" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">الثقة</h3>
-                            <p className="text-gray-600">نبني علاقات طويلة الأمد مبنية على الثقة والمصداقية</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                    )}
+                </motion.div>
+            </div>
         </div>
-    )
+    );
 }

@@ -1,37 +1,28 @@
 'use client';
 
-/**
- * Admin Categories Management Page
- * صفحة إدارة الفئات
- * 
- * يجب وضعه في: admin/app/categories/page.tsx
- */
-
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api';
-import Image from 'next/image';
+import { Plus, Edit2, Trash2, Folder, Loader2 } from 'lucide-react';
+import { toast, Toaster } from 'sonner';
 
 interface Category {
     id: string;
     name: string;
     name_ar?: string;
     slug: string;
-    description?: string;
-    image?: string;
-    parent_id?: string;
-    parent_name?: string;
-    sort_order: number;
     products_count: number;
     is_active: boolean;
-    created_at: string;
 }
 
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
+    const [showModal, setShowModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-    const [draggedItem, setDraggedItem] = useState<Category | null>(null);
+
+    // Form State
+    const [formData, setFormData] = useState({ name: '', slug: '', is_active: true });
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         loadCategories();
@@ -40,436 +31,147 @@ export default function CategoriesPage() {
     async function loadCategories() {
         try {
             setLoading(true);
-            const result = await adminApi.categories.getAll(true); // include inactive
-            if (result.data) {
-                setCategories(result.data.categories || result.data);
-            }
+            const res = await adminApi.categories.list();
+            setCategories(res.data.categories || []);
         } catch (error) {
-            console.error('Error loading categories:', error);
+            toast.error('فشل تحميل الأقسام');
         } finally {
             setLoading(false);
         }
     }
 
-    async function deleteCategory(id: string) {
-        const category = categories.find(c => c.id === id);
-        if (!category) return;
-
-        if (category.products_count > 0) {
-            alert(`لا يمكن حذف هذه الفئة لأنها تحتوي على ${category.products_count} منتج`);
-            return;
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            if (editingCategory) {
+                await adminApi.categories.update(editingCategory.id, formData);
+                toast.success('تم تحديث القسم بنجاح');
+            } else {
+                await adminApi.categories.create(formData);
+                toast.success('تم إضافة القسم بنجاح');
+            }
+            setShowModal(false);
+            setEditingCategory(null);
+            setFormData({ name: '', slug: '', is_active: true });
+            loadCategories();
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'حدث خطأ ما');
+        } finally {
+            setSubmitting(false);
         }
+    }
 
-        if (!confirm('هل أنت متأكد من حذف هذه الفئة؟')) return;
-
+    async function handleDelete(id: string) {
+        if (!confirm('هل أنت متأكد من حذف هذا القسم؟')) return;
         try {
             await adminApi.categories.delete(id);
-            setCategories(categories.filter(c => c.id !== id));
-        } catch (error) {
-            console.error('Error deleting category:', error);
+            toast.success('تم الحذف بنجاح');
+            loadCategories();
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'فشل الحذف');
         }
     }
 
-    async function toggleActive(category: Category) {
-        try {
-            await adminApi.categories.update(category.id, { is_active: !category.is_active });
-            setCategories(categories.map(c =>
-                c.id === category.id ? { ...c, is_active: !c.is_active } : c
-            ));
-        } catch (error) {
-            console.error('Error updating category:', error);
-        }
-    }
-
-    async function updateOrder(categoryId: string, newOrder: number) {
-        try {
-            await adminApi.categories.update(categoryId, { sort_order: newOrder });
-        } catch (error) {
-            console.error('Error updating order:', error);
-        }
-    }
-
-    const handleDragStart = (e: React.DragEvent, category: Category) => {
-        setDraggedItem(category);
-        e.dataTransfer.effectAllowed = 'move';
+    const openEdit = (cat: Category) => {
+        setEditingCategory(cat);
+        setFormData({ name: cat.name, slug: cat.slug, is_active: cat.is_active });
+        setShowModal(true);
     };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
-
-    const handleDrop = (e: React.DragEvent, targetCategory: Category) => {
-        e.preventDefault();
-
-        if (!draggedItem || draggedItem.id === targetCategory.id) return;
-
-        const newCategories = [...categories];
-        const draggedIndex = newCategories.findIndex(c => c.id === draggedItem.id);
-        const targetIndex = newCategories.findIndex(c => c.id === targetCategory.id);
-
-        newCategories.splice(draggedIndex, 1);
-        newCategories.splice(targetIndex, 0, draggedItem);
-
-        // Update sort_order
-        newCategories.forEach((cat, index) => {
-            cat.sort_order = index;
-            if (cat.id === draggedItem.id || cat.id === targetCategory.id) {
-                updateOrder(cat.id, index);
-            }
-        });
-
-        setCategories(newCategories);
-        setDraggedItem(null);
-    };
-
-    // Get parent categories (categories without parent_id)
-    const parentCategories = categories.filter(c => !c.parent_id);
 
     return (
-        <div className="p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">إدارة الفئات</h1>
+        <div className="p-8">
+            <Toaster richColors position="top-center" />
+
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">أقسام المتجر</h1>
+                    <p className="text-gray-500 mt-1">نظم منتجاتك في أقسام ليسهل العثور عليها</p>
+                </div>
                 <button
-                    onClick={() => { setEditingCategory(null); setShowForm(true); }}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                    onClick={() => { setEditingCategory(null); setFormData({ name: '', slug: '', is_active: true }); setShowModal(true); }}
+                    className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-black transition-all"
                 >
-                    ➕ إضافة فئة
+                    <Plus className="w-5 h-5" />
+                    إضافة قسم جديد
                 </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <p className="text-sm text-gray-500">إجمالي الفئات</p>
-                    <p className="text-2xl font-bold">{categories.length}</p>
+            {loading ? (
+                <div className="flex justify-center h-64 items-center"><Loader2 className="animate-spin" /></div>
+            ) : categories.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                    <Folder className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-gray-900">لا توجد أقسام</h3>
+                    <p className="text-gray-500 mb-6">ابدأ بإضافة أول قسم لمتجرك</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <p className="text-sm text-gray-500">فئات نشطة</p>
-                    <p className="text-2xl font-bold text-green-600">
-                        {categories.filter(c => c.is_active).length}
-                    </p>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {categories.map(cat => (
+                        <div key={cat.id} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl">
+                                    📁
+                                </div>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => openEdit(cat)} className="p-2 hover:bg-gray-100 rounded-lg text-blue-600"><Edit2 className="w-4 h-4" /></button>
+                                    <button onClick={() => handleDelete(cat.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">{cat.name}</h3>
+                            <p className="text-sm text-gray-500 mb-4">{cat.products_count} منتج</p>
+                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${cat.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                {cat.is_active ? 'نشط' : 'غير نشط'}
+                            </span>
+                        </div>
+                    ))}
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <p className="text-sm text-gray-500">إجمالي المنتجات</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                        {categories.reduce((sum, c) => sum + c.products_count, 0)}
-                    </p>
-                </div>
-            </div>
-
-            {/* Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <p className="text-blue-800 text-sm">
-                    💡 <strong>تلميح:</strong> يمكنك سحب وإفلات الفئات لتغيير ترتيبها
-                </p>
-            </div>
-
-            {/* Categories List */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                {loading ? (
-                    <div className="p-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                    </div>
-                ) : categories.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                        <span className="text-4xl block mb-2">📁</span>
-                        لا توجد فئات
-                    </div>
-                ) : (
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b">
-                            <tr>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 w-12"></th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الفئة</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الرابط</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الأب</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">المنتجات</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الحالة</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">إجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {categories.map((category) => (
-                                <tr
-                                    key={category.id}
-                                    className="hover:bg-gray-50 cursor-move"
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, category)}
-                                    onDragOver={handleDragOver}
-                                    onDrop={(e) => handleDrop(e, category)}
-                                >
-                                    <td className="px-4 py-4 text-gray-400">
-                                        ⋮⋮
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                {category.image ? (
-                                                    <Image
-                                                        src={category.image}
-                                                        alt={category.name}
-                                                        width={48}
-                                                        height={48}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-2xl">
-                                                        📁
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium">{category.name}</p>
-                                                {category.name_ar && (
-                                                    <p className="text-sm text-gray-500">{category.name_ar}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                                            /{category.slug}
-                                        </code>
-                                    </td>
-                                    <td className="px-4 py-4 text-sm text-gray-500">
-                                        {category.parent_name || '—'}
-                                    </td>
-                                    <td className="px-4 py-4 font-medium">
-                                        {category.products_count}
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        {category.is_active ? (
-                                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">نشط</span>
-                                        ) : (
-                                            <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">متوقف</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => { setEditingCategory(category); setShowForm(true); }}
-                                                className="p-1 hover:bg-gray-100 rounded"
-                                                title="تعديل"
-                                            >
-                                                ✏️
-                                            </button>
-                                            <button
-                                                onClick={() => toggleActive(category)}
-                                                className="p-1 hover:bg-gray-100 rounded"
-                                                title={category.is_active ? 'إلغاء التفعيل' : 'تفعيل'}
-                                            >
-                                                {category.is_active ? '⏸️' : '▶️'}
-                                            </button>
-                                            <button
-                                                onClick={() => deleteCategory(category.id)}
-                                                className="p-1 hover:bg-red-100 rounded text-red-600"
-                                                title="حذف"
-                                                disabled={category.products_count > 0}
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
-            {/* Category Form Modal */}
-            {showForm && (
-                <CategoryForm
-                    category={editingCategory}
-                    parentCategories={parentCategories}
-                    onClose={() => { setShowForm(false); setEditingCategory(null); }}
-                    onSave={() => { loadCategories(); setShowForm(false); setEditingCategory(null); }}
-                />
             )}
-        </div>
-    );
-}
 
-// ==================== Category Form ====================
+            {/* Create/Edit Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+                        <h2 className="text-xl font-bold mb-6">{editingCategory ? 'تعديل القسم' : 'إضافة قسم جديد'}</h2>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">اسم القسم</label>
+                                <input
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">الرابط (Slug)</label>
+                                <input
+                                    value={formData.slug}
+                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    required
+                                />
+                            </div>
+                            <label className="flex items-center gap-2 pt-2">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.is_active}
+                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                    className="w-5 h-5 rounded text-blue-600"
+                                />
+                                <span className="text-sm font-medium">نشط</span>
+                            </label>
 
-interface CategoryFormProps {
-    category: Category | null;
-    parentCategories: Category[];
-    onClose: () => void;
-    onSave: () => void;
-}
-
-function CategoryForm({ category, parentCategories, onClose, onSave }: CategoryFormProps) {
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        name: category?.name || '',
-        name_ar: category?.name_ar || '',
-        slug: category?.slug || '',
-        description: category?.description || '',
-        parent_id: category?.parent_id || '',
-        image: category?.image || '',
-        is_active: category?.is_active ?? true,
-    });
-
-    const generateSlug = () => {
-        const slug = formData.name
-            .toLowerCase()
-            .replace(/[^a-z0-9\u0621-\u064A]+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '');
-        setFormData({ ...formData, slug });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-
-        try {
-            const data = {
-                ...formData,
-                parent_id: formData.parent_id || null,
-            };
-
-            if (category) {
-                await adminApi.categories.update(category.id, data);
-            } else {
-                await adminApi.categories.create(data);
-            }
-
-            onSave();
-        } catch (error) {
-            console.error('Error saving category:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-lg w-full">
-                <div className="p-6 border-b flex items-center justify-between">
-                    <h2 className="text-xl font-bold">
-                        {category ? 'تعديل الفئة' : 'إضافة فئة جديدة'}
-                    </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                            <div className="flex gap-3 pt-4">
+                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 bg-gray-100 rounded-lg">إلغاء</button>
+                                <button type="submit" disabled={submitting} className="flex-1 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50">
+                                    {submitting ? 'جاري الحفظ...' : 'حفظ'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {/* Names */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">الاسم (إنجليزي) *</label>
-                            <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                onBlur={() => !formData.slug && generateSlug()}
-                                required
-                                className="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">الاسم (عربي)</label>
-                            <input
-                                type="text"
-                                value={formData.name_ar}
-                                onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
-                                className="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Slug */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">الرابط (Slug) *</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={formData.slug}
-                                onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
-                                required
-                                className="flex-1 px-4 py-2 border rounded-lg font-mono text-sm"
-                            />
-                            <button
-                                type="button"
-                                onClick={generateSlug}
-                                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-                            >
-                                توليد
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Parent Category */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">الفئة الأب</label>
-                        <select
-                            value={formData.parent_id}
-                            onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-                            className="w-full px-4 py-2 border rounded-lg"
-                        >
-                            <option value="">بدون (فئة رئيسية)</option>
-                            {parentCategories.filter(p => p.id !== category?.id).map((parent) => (
-                                <option key={parent.id} value={parent.id}>
-                                    {parent.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">الوصف</label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            rows={2}
-                            className="w-full px-4 py-2 border rounded-lg"
-                        />
-                    </div>
-
-                    {/* Image URL */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1">رابط الصورة</label>
-                        <input
-                            type="url"
-                            value={formData.image}
-                            onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                            className="w-full px-4 py-2 border rounded-lg"
-                            placeholder="https://..."
-                        />
-                    </div>
-
-                    {/* Active */}
-                    <label className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            checked={formData.is_active}
-                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                            className="rounded text-primary-600"
-                        />
-                        <span>نشط</span>
-                    </label>
-
-                    <div className="flex gap-3 pt-4 border-t">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
-                        >
-                            إلغاء
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-1 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300"
-                        >
-                            {loading ? 'جاري الحفظ...' : 'حفظ'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+            )}
         </div>
     );
 }

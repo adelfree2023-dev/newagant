@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { api } from '@/lib/api';
+import { storeApi } from '@/lib/api';
 import { useCart } from '@/context/CartContext';
 
 interface Product {
@@ -44,12 +44,15 @@ export default function ProductsPage() {
             try {
                 setLoading(true);
                 const [productsRes, categoriesRes] = await Promise.all([
-                    api.products.getAll({ category: selectedCategory, search: searchQuery }),
-                    api.categories.getAll(),
+                    storeApi.products.list({ category: selectedCategory, search: searchQuery }),
+                    storeApi.categories.list(),
                 ]);
 
-                if (productsRes.data) setProducts(productsRes.data.products || productsRes.data);
-                if (categoriesRes.data) setCategories(categoriesRes.data);
+                if (productsRes.products) setProducts(productsRes.products);
+                else if (Array.isArray(productsRes)) setProducts(productsRes);
+                else if (productsRes.data && Array.isArray(productsRes.data)) setProducts(productsRes.data);
+
+                if (categoriesRes) setCategories(categoriesRes);
             } catch (error) {
                 console.error('Error loading products:', error);
             } finally {
@@ -98,8 +101,8 @@ export default function ProductsPage() {
                         <button
                             onClick={() => setSelectedCategory('')}
                             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === ''
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
                             الكل
@@ -109,8 +112,8 @@ export default function ProductsPage() {
                                 key={category.id}
                                 onClick={() => setSelectedCategory(category.id)}
                                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === category.id
-                                        ? 'bg-primary-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 {category.name}
@@ -220,3 +223,4 @@ export default function ProductsPage() {
         </div>
     );
 }
+

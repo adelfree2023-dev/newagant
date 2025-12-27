@@ -1,81 +1,57 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://35.226.47.16:8000'
-
-interface Category {
-    id: string
-    name: string
-    name_ar: string
-    slug: string
-    icon: string
-    products_count?: number
-}
-
-const colorClasses = [
-    'from-blue-500 to-blue-600',
-    'from-pink-500 to-pink-600',
-    'from-green-500 to-green-600',
-    'from-purple-500 to-purple-600',
-    'from-orange-500 to-orange-600',
-    'from-red-500 to-red-600',
-    'from-teal-500 to-teal-600',
-    'from-indigo-500 to-indigo-600',
-]
+import { useEffect, useState } from 'react';
+import { storeApi } from '@/lib/api';
+import { motion } from 'framer-motion';
+import { Folder } from 'lucide-react';
+import Link from 'next/link';
 
 export default function CategoriesPage() {
-    const [categories, setCategories] = useState<Category[]>([])
-    const [loading, setLoading] = useState(true)
+    const [categories, setCategories] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        async function fetchCategories() {
-            try {
-                const res = await fetch(`${API_URL}/api/categories`)
-                const json = await res.json()
-                if (json.success) {
-                    setCategories(json.data)
-                }
-            } catch (err) {
-                console.error('Error:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchCategories()
-    }, [])
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-12 h-12 animate-spin text-primary-500" />
-            </div>
-        )
-    }
+        storeApi.categories.list().then(data => {
+            setCategories(data || []);
+            setLoading(false);
+        });
+    }, []);
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">جميع الأقسام</h1>
+        <div className="min-h-screen bg-gray-50 py-12 px-4" dir="rtl">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center mb-16">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-4">تصفح الأقسام</h1>
+                    <p className="text-gray-500">اكتشف منتجاتنا المميزة حسب القسم</p>
+                </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {categories.map((cat, index) => (
-                    <Link
-                        key={cat.id}
-                        href={`/category/${cat.slug}`}
-                        className={`bg-gradient-to-br ${colorClasses[index % colorClasses.length]} 
-                       rounded-2xl p-6 text-center text-white 
-                       hover:shadow-xl hover:-translate-y-2 transition-all duration-300`}
-                    >
-                        <span className="text-6xl block mb-4">{cat.icon}</span>
-                        <h2 className="text-xl font-bold mb-2">{cat.name_ar}</h2>
-                        {cat.products_count !== undefined && (
-                            <p className="text-sm opacity-80">{cat.products_count} منتج</p>
-                        )}
-                    </Link>
-                ))}
+                {loading ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-pulse">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="h-40 bg-gray-200 rounded-2xl"></div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {categories.map((cat, i) => (
+                            <motion.div
+                                key={cat.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.1 }}
+                            >
+                                <Link href={`/products?category=${cat.id}`} className="block group bg-white rounded-3xl p-8 text-center border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                                    <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <Folder className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{cat.name}</h3>
+                                    <p className="text-sm text-gray-400">{cat.products_count} منتج</p>
+                                </Link>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
-    )
+    );
 }
