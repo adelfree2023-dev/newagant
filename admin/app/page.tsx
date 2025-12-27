@@ -1,89 +1,166 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import {
     ShoppingCart,
     DollarSign,
     Package,
     Users,
     TrendingUp,
-    TrendingDown,
     ArrowUpRight,
-    Clock
+    Clock,
+    Loader2
 } from 'lucide-react'
 import Link from 'next/link'
+import { adminApi } from '@/lib/api'
 
-// Mock data
-const stats = [
-    {
-        title: 'المبيعات اليوم',
-        value: '5,420',
-        unit: 'ر.س',
-        change: '+12.5%',
-        trend: 'up',
-        icon: DollarSign,
-        color: 'bg-green-500',
-    },
-    {
-        title: 'الطلبات اليوم',
-        value: '15',
-        change: '+8.3%',
-        trend: 'up',
-        icon: ShoppingCart,
-        color: 'bg-blue-500',
-    },
-    {
-        title: 'المنتجات',
-        value: '156',
-        change: '+2',
-        trend: 'up',
-        icon: Package,
-        color: 'bg-purple-500',
-    },
-    {
-        title: 'العملاء',
-        value: '89',
-        change: '+5',
-        trend: 'up',
-        icon: Users,
-        color: 'bg-orange-500',
-    },
-]
-
-const recentOrders = [
-    { id: 'ORD-001', customer: 'أحمد محمد', total: 1500, status: 'pending', date: 'منذ 5 دقائق' },
-    { id: 'ORD-002', customer: 'سارة علي', total: 2300, status: 'processing', date: 'منذ 15 دقيقة' },
-    { id: 'ORD-003', customer: 'محمد خالد', total: 890, status: 'shipped', date: 'منذ ساعة' },
-    { id: 'ORD-004', customer: 'نورة أحمد', total: 3200, status: 'delivered', date: 'منذ 2 ساعة' },
-    { id: 'ORD-005', customer: 'عبدالله سعد', total: 750, status: 'pending', date: 'منذ 3 ساعات' },
-]
-
-const topProducts = [
-    { name: 'آيفون 15 برو ماكس', sales: 45, revenue: 202455, image: 'https://via.placeholder.com/50' },
-    { name: 'ايربودز برو 2', sales: 120, revenue: 119880, image: 'https://via.placeholder.com/50' },
-    { name: 'ماك بوك برو M3', sales: 12, revenue: 155988, image: 'https://via.placeholder.com/50' },
-    { name: 'ساعة أبل الترا 2', sales: 28, revenue: 97972, image: 'https://via.placeholder.com/50' },
-]
-
-const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    processing: 'bg-blue-100 text-blue-700',
-    shipped: 'bg-purple-100 text-purple-700',
-    delivered: 'bg-green-100 text-green-700',
-    cancelled: 'bg-red-100 text-red-700',
+interface DashboardStats {
+    todaySales: number
+    todayOrders: number
+    totalProducts: number
+    totalCustomers: number
 }
 
-const statusLabels: Record<string, string> = {
-    pending: 'قيد الانتظار',
-    processing: 'جاري التجهيز',
-    shipped: 'تم الشحن',
-    delivered: 'تم التوصيل',
-    cancelled: 'ملغي',
+interface RecentOrder {
+    id: string
+    customer: string
+    total: number
+    status: string
+    date: string
 }
 
-export default function DashboardPage() {
+interface TopProduct {
+    id: string
+    name: string
+    image: string
+    sales: number
+    revenue: number
+}
+
+export default function AdminDashboard() {
+    const [stats, setStats] = useState<DashboardStats | null>(null)
+    const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
+    const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        loadDashboardData()
+    }, [])
+
+    async function loadDashboardData() {
+        try {
+            setLoading(true)
+            // Try to get real data from API
+            const res = await fetch('/api/admin/dashboard', {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+
+            if (res.ok) {
+                const data = await res.json()
+                if (data.success && data.data) {
+                    setStats({
+                        todaySales: data.data.today_revenue || 0,
+                        todayOrders: data.data.today_orders || 0,
+                        totalProducts: data.data.total_products || 0,
+                        totalCustomers: data.data.total_customers || 0
+                    })
+                }
+            }
+
+            // Get recent orders
+            const ordersRes = await adminApi.dashboard.getRecentOrders(5)
+            if (ordersRes.data) {
+                setRecentOrders(ordersRes.data.map((o: any) => ({
+                    id: o.order_number || o.id,
+                    customer: o.customer?.name || 'عميل',
+                    total: o.total,
+                    status: o.status,
+                    date: formatDate(o.created_at)
+                })))
+            }
+        } catch (err) {
+            console.error('Dashboard load error:', err)
+            // Use fallback data if API fails
+            setStats({
+                todaySales: 0,
+                todayOrders: 0,
+                totalProducts: 0,
+                totalCustomers: 0
+            })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    function formatDate(dateStr: string) {
+        const date = new Date(dateStr)
+        const now = new Date()
+        const diff = now.getTime() - date.getTime()
+        const minutes = Math.floor(diff / 60000)
+        if (minutes < 60) return `منذ ${minutes} دقيقة`
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) return `منذ ${hours} ساعة`
+        return date.toLocaleDateString('ar-SA')
+    }
+
+    const statusColors: Record<string, string> = {
+        pending: 'bg-yellow-100 text-yellow-800',
+        processing: 'bg-blue-100 text-blue-800',
+        shipped: 'bg-purple-100 text-purple-800',
+        delivered: 'bg-green-100 text-green-800',
+        cancelled: 'bg-red-100 text-red-800'
+    }
+
+    const statusLabels: Record<string, string> = {
+        pending: 'قيد الانتظار',
+        processing: 'قيد التجهيز',
+        shipped: 'تم الشحن',
+        delivered: 'تم التوصيل',
+        cancelled: 'ملغي'
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+            </div>
+        )
+    }
+
+    const statCards = [
+        {
+            title: 'المبيعات اليوم',
+            value: stats?.todaySales?.toLocaleString() || '0',
+            unit: 'ر.س',
+            icon: DollarSign,
+            color: 'bg-green-500',
+        },
+        {
+            title: 'الطلبات اليوم',
+            value: stats?.todayOrders?.toString() || '0',
+            icon: ShoppingCart,
+            color: 'bg-blue-500',
+        },
+        {
+            title: 'المنتجات',
+            value: stats?.totalProducts?.toString() || '0',
+            icon: Package,
+            color: 'bg-purple-500',
+        },
+        {
+            title: 'العملاء',
+            value: stats?.totalCustomers?.toString() || '0',
+            icon: Users,
+            color: 'bg-orange-500',
+        },
+    ]
+
     return (
-        <div className="space-y-6">
-            {/* Page Title */}
+        <div className="p-6 space-y-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">لوحة التحكم</h1>
@@ -91,91 +168,76 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                     <Clock className="w-4 h-4" />
-                    <span>آخر تحديث: الآن</span>
+                    آخر تحديث: {new Date().toLocaleTimeString('ar-SA')}
                 </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => (
-                    <div key={index} className="stat-card">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 mb-1">{stat.title}</p>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {stat.value} {stat.unit && <span className="text-base font-normal">{stat.unit}</span>}
-                                </p>
-                            </div>
-                            <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center`}>
+                {statCards.map((stat, index) => (
+                    <div
+                        key={index}
+                        className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={`p-3 rounded-xl ${stat.color}`}>
                                 <stat.icon className="w-6 h-6 text-white" />
                             </div>
+                            <TrendingUp className="w-5 h-5 text-green-500" />
                         </div>
-                        <div className="flex items-center gap-1 mt-3">
-                            {stat.trend === 'up' ? (
-                                <TrendingUp className="w-4 h-4 text-green-500" />
-                            ) : (
-                                <TrendingDown className="w-4 h-4 text-red-500" />
-                            )}
-                            <span className={stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}>
-                                {stat.change}
-                            </span>
-                            <span className="text-gray-400 text-sm">من الأمس</span>
-                        </div>
+                        <h3 className="text-3xl font-bold text-gray-900">
+                            {stat.value}
+                            {stat.unit && <span className="text-lg mr-1">{stat.unit}</span>}
+                        </h3>
+                        <p className="text-gray-500 mt-1">{stat.title}</p>
                     </div>
                 ))}
             </div>
 
-            {/* Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Orders */}
-                <div className="card">
-                    <div className="p-4 border-b flex items-center justify-between">
-                        <h2 className="font-bold text-gray-900">آخر الطلبات</h2>
-                        <Link href="/orders" className="text-primary-600 text-sm hover:underline flex items-center gap-1">
-                            عرض الكل <ArrowUpRight className="w-4 h-4" />
-                        </Link>
-                    </div>
-                    <div className="divide-y">
-                        {recentOrders.map((order) => (
-                            <div key={order.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                                <div>
-                                    <p className="font-medium text-gray-900">{order.id}</p>
-                                    <p className="text-sm text-gray-500">{order.customer}</p>
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-bold text-gray-900">{order.total.toFixed(2)} ر.س</p>
-                                    <span className={`text-xs px-2 py-1 rounded-full ${statusColors[order.status]}`}>
-                                        {statusLabels[order.status]}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+            {/* Recent Orders */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-gray-900">آخر الطلبات</h2>
+                    <Link href="/orders" className="text-primary-600 hover:underline flex items-center gap-1">
+                        عرض الكل
+                        <ArrowUpRight className="w-4 h-4" />
+                    </Link>
                 </div>
-
-                {/* Top Products */}
-                <div className="card">
-                    <div className="p-4 border-b flex items-center justify-between">
-                        <h2 className="font-bold text-gray-900">أفضل المنتجات مبيعاً</h2>
-                        <Link href="/products" className="text-primary-600 text-sm hover:underline flex items-center gap-1">
-                            عرض الكل <ArrowUpRight className="w-4 h-4" />
-                        </Link>
-                    </div>
-                    <div className="divide-y">
-                        {topProducts.map((product, index) => (
-                            <div key={index} className="p-4 flex items-center gap-4 hover:bg-gray-50">
-                                <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-sm font-bold text-gray-500">
-                                    {index + 1}
-                                </span>
-                                <img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
-                                <div className="flex-grow">
-                                    <p className="font-medium text-gray-900">{product.name}</p>
-                                    <p className="text-sm text-gray-500">{product.sales} مبيعات</p>
-                                </div>
-                                <p className="font-bold text-gray-900">{product.revenue.toLocaleString()} ر.س</p>
-                            </div>
-                        ))}
-                    </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">رقم الطلب</th>
+                                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">العميل</th>
+                                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">المبلغ</th>
+                                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">الحالة</th>
+                                <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">الوقت</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {recentOrders.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                        لا توجد طلبات حتى الآن
+                                    </td>
+                                </tr>
+                            ) : (
+                                recentOrders.map((order) => (
+                                    <tr key={order.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 font-medium text-gray-900">#{order.id}</td>
+                                        <td className="px-6 py-4 text-gray-600">{order.customer}</td>
+                                        <td className="px-6 py-4 font-medium">{order.total.toLocaleString()} ر.س</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || 'bg-gray-100'}`}>
+                                                {statusLabels[order.status] || order.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-500 text-sm">{order.date}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
