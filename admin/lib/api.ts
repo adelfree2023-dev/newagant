@@ -55,7 +55,10 @@ export const adminApi = {
     },
     products: {
         list: () => api.get('/admin/products'),
+        getAll: (params: any) => api.get('/admin/products', { params }), // Support filters
         create: (data: any) => api.post('/admin/products', data),
+        update: (id: string, data: any) => api.put(`/admin/products/${id}`, data),
+        delete: (id: string) => api.delete(`/admin/products/${id}`),
     },
     settings: {
         get: () => api.get('/admin/store/config'),

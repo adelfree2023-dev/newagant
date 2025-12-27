@@ -1,290 +1,196 @@
 'use client';
 
-/**
- * Storefront Homepage
- * الصفحة الرئيسية
- * 
- * يجب وضعه في: storefront/app/page.tsx
- */
-
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingBag, Star, Search, Filter } from 'lucide-react';
+import { storeApi } from '@/lib/api';
 import Image from 'next/image';
-import { api } from '@/lib/api';
-import { useCart } from '@/context/CartContext';
 
 interface Product {
     id: string;
     name: string;
-    slug: string;
     price: number;
     compare_price?: number;
     images: string[];
-    is_featured?: boolean;
-}
-
-interface Category {
-    id: string;
-    name: string;
+    category_name?: string;
+    is_active: boolean;
+    stock: number;
     slug: string;
-    image?: string;
 }
 
-export default function HomePage() {
-    const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
+export default function StorefrontHome() {
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
-    const { addToCart } = useCart();
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [productsRes, categoriesRes] = await Promise.all([
-                    api.products.getAll({ featured: true, limit: 8 }),
-                    api.categories.getAll(),
-                ]);
-
-                if (productsRes.data) setFeaturedProducts(productsRes.data.products || productsRes.data);
-                if (categoriesRes.data) setCategories(categoriesRes.data);
-            } catch (error) {
-                console.error('Error loading homepage data:', error);
+                // Fetch products (public)
+                // Note: The API middleware will handle tenant resolution based on domain
+                // For localhost, it defaults to 'demo' tenant or first active one via our backend fallback
+                const data = await storeApi.products.list();
+                if (data && data.products) {
+                    setProducts(data.products);
+                } else if (Array.isArray(data)) {
+                    setProducts(data);
+                }
+            } catch (err) {
+                console.error('Failed to load store data', err);
             } finally {
                 setLoading(false);
             }
         }
-
         loadData();
     }, []);
 
+    // Animation Variants
+    const container = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const item = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+    };
+
     return (
-        <div className="min-h-screen">
-            {/* Hero Section */}
-            <section className="hero py-20 md:py-32">
-                <div className="hero-overlay"></div>
-                <div className="max-w-7xl mx-auto px-4 relative z-10">
-                    <div className="max-w-2xl">
-                        <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-fadeIn">
-                            تسوق بذكاء
-                            <br />
-                            وفّر أكثر
-                        </h1>
-                        <p className="text-xl md:text-2xl text-white/80 mb-8 animate-fadeIn">
-                            اكتشف أفضل المنتجات بأسعار لا تُقاوم مع شحن مجاني للطلبات فوق 200 ر.س
-                        </p>
-                        <div className="flex gap-4 animate-slideUp">
-                            <Link
-                                href="/products"
-                                className="px-8 py-4 bg-white text-primary-600 rounded-lg font-bold hover:bg-gray-100 transition-colors"
-                            >
-                                تسوق الآن
-                            </Link>
-                            <Link
-                                href="/offers"
-                                className="px-8 py-4 border-2 border-white text-white rounded-lg font-bold hover:bg-white/10 transition-colors"
-                            >
-                                العروض 🔥
-                            </Link>
+        <div className="min-h-screen bg-gray-50 font-sans" dir="rtl">
+
+            {/* Navbar (Mock) */}
+            <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center font-bold text-xl">
+                            S
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Features */}
-            <section className="py-8 bg-white border-b">
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="flex items-center gap-3 p-4">
-                            <span className="text-2xl">🚚</span>
-                            <div>
-                                <p className="font-medium">شحن مجاني</p>
-                                <p className="text-sm text-gray-500">للطلبات فوق 200 ر.س</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-4">
-                            <span className="text-2xl">↩️</span>
-                            <div>
-                                <p className="font-medium">إرجاع سهل</p>
-                                <p className="text-sm text-gray-500">خلال 14 يوم</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-4">
-                            <span className="text-2xl">💯</span>
-                            <div>
-                                <p className="font-medium">منتجات أصلية</p>
-                                <p className="text-sm text-gray-500">ضمان الجودة</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-4">
-                            <span className="text-2xl">📞</span>
-                            <div>
-                                <p className="font-medium">دعم 24/7</p>
-                                <p className="text-sm text-gray-500">للرد على استفساراتك</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Categories */}
-            <section className="py-12 bg-gray-50">
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">تصفح الفئات</h2>
-                        <Link href="/categories" className="text-primary-600 hover:underline">
-                            عرض الكل ←
-                        </Link>
+                        <span className="font-bold text-xl tracking-tight text-gray-900">Storefront</span>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {loading ? (
-                            [...Array(6)].map((_, i) => (
-                                <div key={i} className="aspect-square bg-gray-200 rounded-xl animate-pulse"></div>
-                            ))
-                        ) : categories.length === 0 ? (
-                            <p className="col-span-full text-center text-gray-500">لا توجد فئات</p>
-                        ) : (
-                            categories.slice(0, 6).map((category) => (
-                                <Link
-                                    key={category.id}
-                                    href={`/products?category=${category.slug}`}
-                                    className="category-card group"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-700 opacity-80 group-hover:opacity-90 transition-opacity"></div>
-                                    <div className="category-card-overlay">
-                                        <p className="text-white font-bold text-lg">{category.name}</p>
-                                    </div>
-                                </Link>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            {/* Featured Products */}
-            <section className="py-12">
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">منتجات مميزة</h2>
-                        <Link href="/products?featured=true" className="text-primary-600 hover:underline">
-                            عرض الكل ←
-                        </Link>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {loading ? (
-                            [...Array(8)].map((_, i) => (
-                                <div key={i} className="bg-white rounded-xl shadow-sm animate-pulse">
-                                    <div className="aspect-square bg-gray-200 rounded-t-xl"></div>
-                                    <div className="p-4 space-y-2">
-                                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : featuredProducts.length === 0 ? (
-                            <p className="col-span-full text-center text-gray-500">لا توجد منتجات مميزة</p>
-                        ) : (
-                            featuredProducts.map((product) => (
-                                <ProductCard
-                                    key={product.id}
-                                    product={product}
-                                    onAddToCart={() => addToCart({
-                                        productId: product.id,
-                                        name: product.name,
-                                        price: product.price,
-                                        image: product.images?.[0],
-                                        quantity: 1,
-                                    })}
-                                />
-                            ))
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            {/* Newsletter */}
-            <section className="newsletter">
-                <div className="max-w-7xl mx-auto px-4 text-center">
-                    <h2 className="text-2xl font-bold mb-2">اشترك في نشرتنا البريدية</h2>
-                    <p className="text-white/80 mb-6">احصل على آخر العروض والتخفيضات مباشرة في بريدك</p>
-                    <form className="flex gap-2 max-w-md mx-auto">
-                        <input
-                            type="email"
-                            placeholder="أدخل بريدك الإلكتروني"
-                            className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none"
-                        />
-                        <button
-                            type="submit"
-                            className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
-                        >
-                            اشتراك
+                    <div className="flex items-center gap-4">
+                        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
+                            <ShoppingBag className="w-6 h-6 text-gray-700" />
+                            <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold">2</span>
                         </button>
-                    </form>
+                    </div>
                 </div>
-            </section>
+            </nav>
+
+            {/* Hero Section */}
+            <div className="bg-gray-900 text-white py-20 px-4 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-20"></div>
+                <div className="max-w-7xl mx-auto relative z-10 text-center">
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="text-4xl md:text-6xl font-bold mb-6"
+                    >
+                        أحدث التشكيلات العصرية
+                    </motion.h1>
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto"
+                    >
+                        اكتشف أفضل المنتجات بجودة عالية وأسعار منافسة تصلك أينما كنت.
+                    </motion.p>
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-white text-gray-900 px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors shadow-lg"
+                    >
+                        تسوق الآن
+                    </motion.button>
+                </div>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+                <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+                    <div className="animate-spin w-12 h-12 border-4 border-gray-200 border-t-black rounded-full mx-auto mb-4"></div>
+                </div>
+            )}
+
+            {/* Products Grid */}
+            {!loading && (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                    <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                            <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                            منتجات مختارة لك
+                        </h2>
+                        <div className="flex gap-2">
+                            <button className="p-2 border rounded-lg hover:bg-white hover:shadow-sm transition-all"><Filter className="w-5 h-5" /></button>
+                        </div>
+                    </div>
+
+                    {products.length === 0 ? (
+                        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                            <p className="text-gray-500 text-lg">عفواً، لا توجد منتجات حالياً.</p>
+                        </div>
+                    ) : (
+                        <motion.div
+                            variants={container}
+                            initial="hidden"
+                            animate="show"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+                        >
+                            {products.map((product) => (
+                                <ProductCard key={product.id} product={product} variants={item} />
+                            ))}
+                        </motion.div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
 
-// ==================== Product Card Component ====================
-
-function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: () => void }) {
-    const discount = product.compare_price && product.compare_price > product.price
-        ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100)
-        : 0;
-
+function ProductCard({ product, variants }: { product: Product, variants: any }) {
     return (
-        <div className="product-card group">
-            <Link href={`/products/${product.slug}`}>
-                <div className="aspect-square relative overflow-hidden">
-                    {product.images?.[0] ? (
-                        <Image
-                            src={product.images[0]}
-                            alt={product.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                            <span className="text-4xl">📦</span>
-                        </div>
-                    )}
+        <motion.div
+            variants={variants}
+            className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer"
+        >
+            <div className="aspect-[4/5] relative bg-gray-100 overflow-hidden">
+                {product.images?.[0] && (
+                    <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                )}
+                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-10 transition-opacity" />
 
-                    {discount > 0 && (
-                        <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                            -{discount}%
-                        </span>
-                    )}
-
-                    {product.is_featured && (
-                        <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold">
-                            ⭐ مميز
-                        </span>
-                    )}
-                </div>
-            </Link>
-
-            <div className="p-4">
-                <Link href={`/products/${product.slug}`}>
-                    <h3 className="font-medium text-gray-900 line-clamp-2 hover:text-primary-600">
-                        {product.name}
-                    </h3>
-                </Link>
-
-                <div className="flex items-center gap-2 mt-2">
-                    <span className="price text-lg">{product.price.toFixed(2)} ر.س</span>
-                    {product.compare_price && product.compare_price > product.price && (
-                        <span className="price-old">{product.compare_price.toFixed(2)}</span>
-                    )}
-                </div>
-
-                <button
-                    onClick={onAddToCart}
-                    className="mt-3 w-full py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
-                >
-                    أضف للسلة
+                <button className="absolute bottom-4 right-4 bg-white text-black p-3 rounded-full shadow-lg translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black hover:text-white">
+                    <ShoppingBag className="w-5 h-5" />
                 </button>
             </div>
-        </div>
+
+            <div className="p-5">
+                <p className="text-xs text-gray-500 mb-1">{product.category_name || 'عام'}</p>
+                <h3 className="font-bold text-gray-900 mb-2 truncate text-lg group-hover:text-blue-600 transition-colors">
+                    {product.name}
+                </h3>
+                <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-gray-900">{product.price} ر.س</span>
+                    {product.compare_price && (
+                        <span className="text-sm text-gray-400 line-through decoration-red-500/50">
+                            {product.compare_price} ر.س
+                        </span>
+                    )}
+                </div>
+            </div>
+        </motion.div>
     );
 }
