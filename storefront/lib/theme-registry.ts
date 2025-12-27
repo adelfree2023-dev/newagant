@@ -7,9 +7,9 @@ export interface ThemeMetadata {
     isPremium?: boolean;
     // 🔧 Matrix Configuration
     config: {
-        header: 'v1' | 'v2' | 'v3';
-        footer: 'v1' | 'v2';
-        productCard: 'v1' | 'v2';
+        header: 'v1' | 'v2' | 'v3' | 'v4' | 'v5';
+        footer: 'v1' | 'v2' | 'v3';
+        productCard: 'v1' | 'v2' | 'v3';
         colorInvert?: boolean;
     };
 }

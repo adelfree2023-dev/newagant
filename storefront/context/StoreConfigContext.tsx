@@ -25,6 +25,8 @@ interface StoreConfig {
     name: string;
     primary_color: string;
     secondary_color: string;
+    theme_id?: string;  // Matrix 2.0 - Theme identifier
+    theme_config?: Record<string, any>;  // Theme-specific config overrides
     settings?: {
         layout?: LayoutConfig;
         currency?: string;
