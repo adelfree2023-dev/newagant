@@ -21,6 +21,7 @@ interface Product {
     badge?: 'sale' | 'new' | 'hot'
     rating?: number
     reviews_count?: number
+    attributes?: Record<string, string> // Added for filtering
 }
 
 interface Category {
@@ -36,11 +37,14 @@ export default function CategoryPage() {
     const params = useParams()
     const searchParams = useSearchParams()
     const { t, locale } = useLanguage();
+
     const [category, setCategory] = useState<Category | null>(null)
+    const [aggregations, setAggregations] = useState<any[]>([])
+
     const [loading, setLoading] = useState(true)
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     const [sortBy, setSortBy] = useState('default')
-    const [showFilters, setShowFilters] = useState(false) // Mobile
+    const [showFilters, setShowFilters] = useState(false)
 
     useEffect(() => {
         async function fetchCategory() {
@@ -49,7 +53,8 @@ export default function CategoryPage() {
                 const res = await fetch(`${API_URL}/api/categories/${params.slug}`)
                 const json = await res.json()
                 if (json.success) {
-                    setCategory(json.data)
+                    setCategory(json.category)
+                    setAggregations(json.aggregations || [])
                 }
             } catch (err) {
                 console.error('Error:', err)
@@ -60,19 +65,35 @@ export default function CategoryPage() {
         fetchCategory()
     }, [params.slug])
 
-    // --- Client Side Filtering Logic (Temporary until API Update) ---
+    // --- Filtering Logic ---
     const filterProducts = (products: Product[]) => {
         let filtered = [...products];
 
-        // Price Filter
+        // 1. Price
         const minPrice = searchParams.get('min_price')
         const maxPrice = searchParams.get('max_price')
         if (minPrice) filtered = filtered.filter(p => p.price >= Number(minPrice))
         if (maxPrice) filtered = filtered.filter(p => p.price <= Number(maxPrice))
 
-        // Rating Filter
+        // 2. Rating
         const minRating = searchParams.get('rating')
         if (minRating) filtered = filtered.filter(p => (p.rating || 0) >= Number(minRating))
+
+        // 3. Dynamic Attributes
+        // Iterate through all active search params
+        // If the param matches a known attribute code, filter by it
+        // Note: This requires products to have 'attributes' field loaded.
+        // For now, this is a placeholder unless we create a 'Client Side' matching logic
+        // or fully rely on server (which we aren't doing here to keep it fast/optimistic).
+
+        // Example: Only rudimentary support if product has 'attributes' map
+        /*
+        searchParams.forEach((value, key) => {
+            if (['min_price', 'max_price', 'rating'].includes(key)) return;
+            // It's a dynamic attribute
+            filtered = filtered.filter(p => p.attributes?.[key] === value);
+        });
+        */
 
         return filtered;
     }
@@ -135,7 +156,7 @@ export default function CategoryPage() {
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Sidebar (Desktop) */}
                 <aside className="hidden lg:block w-1/4 min-w-[280px]">
-                    <FilterSidebar />
+                    <FilterSidebar aggregations={aggregations} />
                 </aside>
 
                 {/* Main Content */}
@@ -186,7 +207,7 @@ export default function CategoryPage() {
                     {/* Mobile Filters (Collapsible) */}
                     {showFilters && (
                         <div className="lg:hidden mb-6">
-                            <FilterSidebar />
+                            <FilterSidebar aggregations={aggregations} />
                         </div>
                     )}
 

@@ -236,16 +236,14 @@ function ProductCard({ product, onEdit, onDelete, onToggleActive }: any) {
 // Helper components
 import { CheckCircle } from 'lucide-react';
 
-// Form Component (Simplified for brevity, but matches styling)
+// ... imports
+import ProductAttributesEditor from '@/components/products/ProductAttributesEditor';
+
+// ... (Rest of code until ProductForm)
+
 function ProductForm({ initialData, onClose, onSuccess }: any) {
     const { createProduct, updateProduct } = useProductStore();
     const [loading, setLoading] = useState(false);
-    // ... Simplified form logic for brevity, using same styling as parent
-    // You would include the form state logic here as in the previous file but with updated UI classes
-
-    // For this rewrite, I want to keep the file clean. 
-    // I can include the full form if needed but let's assume it's similar logic.
-    // I'll reimplement the basic form structure.
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
         price: initialData?.price || '',
@@ -276,6 +274,7 @@ function ProductForm({ initialData, onClose, onSuccess }: any) {
                 </div>
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
                     <div className="space-y-4">
+                        {/* ... Basic Fields ... */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">اسم المنتج</label>
                             <input
@@ -307,7 +306,15 @@ function ProductForm({ initialData, onClose, onSuccess }: any) {
                                 />
                             </div>
                         </div>
-                        <div className="flex gap-6 pt-4">
+
+                        {/* Attributes Section (Only showing when editing existing product for now) */}
+                        {initialData?.id && (
+                            <div className="border-t border-gray-100 pt-6">
+                                <ProductAttributesEditor productId={initialData.id} />
+                            </div>
+                        )}
+
+                        <div className="flex gap-6 pt-4 border-t border-gray-100">
                             <label className="flex items-center gap-3 cursor-pointer p-4 border rounded-xl flex-1 hover:bg-gray-50">
                                 <input
                                     type="checkbox"

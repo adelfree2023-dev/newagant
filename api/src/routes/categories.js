@@ -83,10 +83,24 @@ router.get('/:slug', tenantMiddleware, optionalAuth, async (req, res) => {
             [category.id]
         );
 
+        // ================= AGGREGATIONS (SMART FILTERS) =================
+        // Only fetch attributes that actually exist for products in this category
+        const aggregations = await query(`
+            SELECT a.id, a.name, a.code, a.type,
+                   json_agg(DISTINCT jsonb_build_object('value', pa.value, 'count', 1)) as values
+            FROM attributes a
+            JOIN product_attributes pa ON a.id = pa.attribute_id
+            JOIN products p ON pa.product_id = p.id
+            WHERE p.category_id = $1 AND p.is_active = true
+            GROUP BY a.id
+        `, [category.id]);
+        // ================================================================
+
         res.json({
             success: true,
             category,
             subcategories: subcategories.rows,
+            aggregations: aggregations.rows // Return smart filters
         });
     } catch (error) {
         console.error('Get category error:', error);

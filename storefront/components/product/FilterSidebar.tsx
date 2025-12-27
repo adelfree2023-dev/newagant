@@ -5,7 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Star, Check } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
-export default function FilterSidebar() {
+interface FilterSidebarProps {
+    aggregations?: {
+        id: string;
+        name: string;
+        code: string;
+        type: string;
+        values: { value: string, count: number }[]
+    }[];
+}
+
+export default function FilterSidebar({ aggregations = [] }: FilterSidebarProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { t } = useLanguage();
@@ -14,7 +24,7 @@ export default function FilterSidebar() {
     const [minPrice, setMinPrice] = useState(searchParams.get('min_price') || '');
     const [maxPrice, setMaxPrice] = useState(searchParams.get('max_price') || '');
 
-    const applyFilters = () => {
+    const applyPriceFilter = () => {
         const params = new URLSearchParams(searchParams.toString());
 
         if (minPrice) params.set('min_price', minPrice);
@@ -34,6 +44,19 @@ export default function FilterSidebar() {
             params.delete(key);
         } else {
             params.set(key, value);
+        }
+        router.push(`?${params.toString()}`);
+    };
+
+    const toggleAttribute = (code: string, value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        const current = params.get(code);
+
+        // Simple toggle logic (supports one value per attribute for now)
+        if (current === value) {
+            params.delete(code);
+        } else {
+            params.set(code, value);
         }
         router.push(`?${params.toString()}`);
     };
@@ -63,46 +86,61 @@ export default function FilterSidebar() {
                     />
                 </div>
                 <button
-                    onClick={applyFilters}
+                    onClick={applyPriceFilter}
                     className="w-full py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-colors"
                 >
                     {t('apply')}
                 </button>
             </div>
 
+            {/* Dynamic Attributes (Smart Filters) */}
+            {aggregations && aggregations.length > 0 && aggregations.map((attr) => (
+                <div key={attr.id} className="mb-8 border-t border-gray-100 pt-6 animate-in slide-in-from-left-2 fade-in">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">{attr.name}</h4>
+                    <div className="space-y-2">
+                        {attr.values.map((val, idx) => {
+                            const isSelected = searchParams.get(attr.code) === val.value;
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => toggleAttribute(attr.code, val.value)}
+                                    className={`flex items-center justify-between w-full text-sm p-2 rounded-lg transition-all ${isSelected ? 'text-primary-600 font-bold bg-primary-50 ring-1 ring-primary-100' : 'text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        {attr.type === 'color' && (
+                                            <span
+                                                className="w-4 h-4 rounded-full border border-gray-200 shadow-sm"
+                                                style={{ backgroundColor: val.value }}
+                                            />
+                                        )}
+                                        {val.value}
+                                    </span>
+                                    {isSelected && <Check className="w-4 h-4" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+
             {/* Ratings */}
-            <div className="mb-8">
+            <div className="mb-8 border-t border-gray-100 pt-6">
                 <h4 className="text-sm font-medium text-gray-900 mb-3">التقييم</h4>
-                <div className="space-y-2">
+                <div className="space-y-1">
                     {[5, 4, 3, 2, 1].map((rating) => (
                         <button
                             key={rating}
                             onClick={() => toggleFilter('rating', rating.toString())}
-                            className={`flex items-center gap-2 w-full text-sm hover:bg-gray-50 p-1 rounded ${searchParams.get('rating') === rating.toString() ? 'bg-primary-50 text-primary-600 font-bold' : 'text-gray-600'}`}
+                            className={`flex items-center gap-2 w-full text-sm hover:bg-gray-50 p-2 rounded-lg transition-colors ${searchParams.get('rating') === rating.toString() ? 'bg-primary-50 text-primary-600 font-bold' : 'text-gray-600'}`}
                         >
                             <div className="flex items-center text-yellow-400">
                                 {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className={`w-3 h-3 ${i < rating ? 'fill-current' : 'text-gray-200 fill-gray-200'}`} />
+                                    <Star key={i} className={`w-3.5 h-3.5 ${i < rating ? 'fill-current' : 'text-gray-200 fill-gray-200'}`} />
                                 ))}
                             </div>
                             <span className="text-xs text-gray-400">وأكثر</span>
                         </button>
                     ))}
-                </div>
-            </div>
-
-            {/* Product Status */}
-            <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-3">حالة المنتج</h4>
-                <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                        <input type="checkbox" className="rounded text-primary-600" />
-                        <span>عروض وخصومات</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                        <input type="checkbox" className="rounded text-primary-600" />
-                        <span>متوفر في المخزون</span>
-                    </label>
                 </div>
             </div>
         </div>

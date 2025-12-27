@@ -68,6 +68,7 @@ app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/provision', require('./routes/provision'));
 app.use('/api/pages', require('./routes/pages'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/attributes', require('./routes/attributes'));
 app.use('/api/staff', require('./routes/staff'));
 
 // ============ Homepage Data (Combined) ============
