@@ -28,20 +28,6 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
     }
 });
 
-// GET /api/pages/id/:id - Get single page by ID (Admin)
-router.get('/id/:id', authenticate, requireAdmin, async (req, res) => {
-    try {
-        const result = await query(
-            'SELECT * FROM tenant_pages WHERE tenant_id = $1 AND id = $2',
-            [req.tenant_id, req.params.id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Page not found' });
-        res.json({ success: true, data: result.rows[0] });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Failed to fetch page' });
-    }
-});
-
 // GET /api/pages/:slug - Get single page (Public)
 // This override the router.use(authenticate) logic because it's public
 router.get('/:slug', async (req, res) => {

@@ -46,12 +46,10 @@ export default function TenantGovernancePage() {
 
     useEffect(() => {
         // Fetch Tenant Config/Features
-        // Using direct fetch for Super Admin to avoid circular dependencies
         fetch(`http://localhost:8000/api/store/config`, {
             headers: { 'x-tenant-id': params.id as string } // Mocking tenant context
         }).then(res => res.json())
             .then(data => {
-                // Merge with registry defaults
                 setFeatures(data.features || {});
                 setLoading(false);
             })
@@ -61,7 +59,7 @@ export default function TenantGovernancePage() {
             });
     }, [params.id]);
 
-    const handleToggle = (path: string, value: boolean) => {
+    const handleToggle = (path: string, value: any) => {
         const parts = path.split('.');
         setFeatures((prev: any) => {
             const newState = JSON.parse(JSON.stringify(prev));
@@ -82,7 +80,6 @@ export default function TenantGovernancePage() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Add Auth token here if needed
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({ features })
@@ -103,22 +100,17 @@ export default function TenantGovernancePage() {
     const renderTree = (node: any, path: string = '') => {
         return Object.entries(node).map(([key, value]: [string, any]) => {
             const currentPath = path ? `${path}.${key}` : key;
-            const isLeaf = value.label !== undefined; // It's a feature definition
+            const isLeaf = value.label !== undefined;
 
             if (isLeaf) {
-                // Determine current value: explicit state -> default -> true
                 const parts = currentPath.split('.');
-                let currentVal = features;
-                let val = value.default; // Start with default
-
-                // Traverse to find actual value
-                let found = true;
                 let ptr = features;
+                let found = true;
                 for (const p of parts) {
-                    if (ptr[p] === undefined) { found = false; break; }
+                    if (ptr?.[p] === undefined) { found = false; break; }
                     ptr = ptr[p];
                 }
-                if (found) val = ptr;
+                const val = found ? ptr : value.default;
 
                 return (
                     <div key={currentPath} className="flex items-center justify-between p-3 border-b border-gray-50 hover:bg-gray-50">
@@ -131,7 +123,7 @@ export default function TenantGovernancePage() {
                             <input
                                 type="checkbox"
                                 className="sr-only peer"
-                                checked={val}
+                                checked={!!val}
                                 onChange={(e) => handleToggle(currentPath, e.target.checked)}
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
@@ -139,7 +131,6 @@ export default function TenantGovernancePage() {
                     </div>
                 );
             } else {
-                // It's a category
                 return (
                     <div key={currentPath} className="mb-4 ml-4 border-l-2 border-gray-100 pl-4">
                         <h3 className="uppercase text-xs font-bold text-gray-400 mb-2 tracking-wider">{key}</h3>
@@ -162,7 +153,7 @@ export default function TenantGovernancePage() {
                         <Shield className="w-8 h-8 text-indigo-600" />
                         حوكمة المتجر
                     </h1>
-                    <p className="text-gray-500 mt-2">التحكم الكامل في الخصائص والميزات المتاحة لهذا المستأجر.</p>
+                    <p className="text-gray-500 mt-2">التحكم الكامل في الخصائص وحدود الاستخدام.</p>
                 </div>
                 <button
                     onClick={saveChanges}
@@ -177,8 +168,39 @@ export default function TenantGovernancePage() {
             {loading ? (
                 <div className="text-center py-20">جاري تحميل السياسات...</div>
             ) : (
-                <div className="space-y-8">
-                    {renderTree(FEATURE_REGISTRY)}
+                <div className="space-y-6">
+                    {/* Quotas & Limits Section */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <div className="w-2 h-6 bg-yellow-500 rounded-full"></div>
+                            حدود الاستخدام (Quotas)
+                        </h2>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">الحد الأقصى للصفحات (Max Pages)</label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        value={features?.limits?.max_pages ?? ''}
+                                        onChange={(e) => handleToggle('limits.max_pages', parseInt(e.target.value))}
+                                        placeholder="DEFAULT"
+                                        className="w-full p-2 border border-blue-200 bg-blue-50 rounded-lg text-center font-bold text-blue-900"
+                                    />
+                                    <span className="text-xs text-gray-400 whitespace-nowrap">صفحة</span>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">اتركه فارغاً لاستخدام حد الباقة الافتراضي.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Features Tree */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <div className="w-2 h-6 bg-indigo-500 rounded-full"></div>
+                            خصائص النظام (System Features)
+                        </h2>
+                        {renderTree(FEATURE_REGISTRY)}
+                    </div>
                 </div>
             )}
         </div>

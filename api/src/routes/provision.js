@@ -110,4 +110,30 @@ router.get('/check-subdomain', async (req, res) => {
 
 
 
+// MIGRATION HELPER (Dynamic CMS)
+router.get('/migrate-cms', async (req, res) => {
+    try {
+        const { query } = require('../db');
+        // Create tenant_pages table
+        await query(`
+            CREATE TABLE IF NOT EXISTS tenant_pages (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+                slug VARCHAR(255) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                content TEXT,
+                meta_title VARCHAR(255),
+                meta_description TEXT,
+                is_published BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(tenant_id, slug)
+            );
+        `);
+        res.json({ success: true, message: 'CMS tables created' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;

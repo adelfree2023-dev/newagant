@@ -68,8 +68,11 @@ export const adminApi = {
         delete: (id: string) => api.delete(`/categories/admin/${id}`),
     },
     pages: {
-        get: () => api.get('/pages'),
-        update: (data: any) => api.put('/pages', data),
+        list: () => api.get('/pages'),
+        get: (id: string) => api.get(`/pages/id/${id}`),
+        create: (data: any) => api.post('/pages', data),
+        update: (id: string, data: any) => api.put(`/pages/${id}`, data),
+        delete: (id: string) => api.delete(`/pages/${id}`),
     },
     settings: {
         get: () => api.get('/admin/store/config'),

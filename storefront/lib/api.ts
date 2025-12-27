@@ -80,6 +80,14 @@ export const storeApi = {
             } catch (e) {
                 return {};
             }
+        },
+        getBySlug: async (slug: string) => {
+            try {
+                const res = await api.get(`/pages/${slug}`);
+                return res.data.data;
+            } catch (e) {
+                return null;
+            }
         }
     },
     coupons: {
