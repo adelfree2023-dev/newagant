@@ -36,8 +36,47 @@ router.put('/', authenticate, requireAdmin, async (req, res) => {
     try {
         const { theme_id, theme_config, ...otherSettings } = req.body;
 
-        // 1. Update theme_id if provided
+        // 1. Update theme_id if provided (with governance check)
         if (theme_id) {
+            // Governance: Check if theme is allowed for this tenant's plan
+            const tenantInfo = await query(
+                'SELECT allowed_themes, plan FROM tenants WHERE id = $1',
+                [req.tenant_id]
+            );
+
+            if (tenantInfo.rows.length > 0) {
+                const { allowed_themes, plan } = tenantInfo.rows[0];
+
+                // Premium themes list (can be expanded)
+                const PREMIUM_THEMES = ['luxury', 'esports', 'jewelry', 'watches', 'ramadan'];
+                const isPremiumTheme = PREMIUM_THEMES.includes(theme_id);
+                const isFreePlan = !plan || plan === 'free' || plan === 'basic';
+
+                // Check 1: If allowed_themes is set, enforce it
+                if (allowed_themes && Array.isArray(allowed_themes) && allowed_themes.length > 0) {
+                    if (!allowed_themes.includes(theme_id) && !allowed_themes.includes('*')) {
+                        return res.status(403).json({
+                            success: false,
+                            error: 'هذا الثيم غير متاح في باقتك الحالية',
+                            error_en: 'This theme is not available in your current plan',
+                            upgrade_required: true,
+                            theme_id: theme_id
+                        });
+                    }
+                }
+
+                // Check 2: Block premium themes for free plans
+                if (isPremiumTheme && isFreePlan) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'الثيمات المميزة تتطلب ترقية الباقة',
+                        error_en: 'Premium themes require plan upgrade',
+                        upgrade_required: true,
+                        theme_id: theme_id
+                    });
+                }
+            }
+
             await query(
                 'UPDATE tenants SET theme_id = $1 WHERE id = $2',
                 [theme_id, req.tenant_id]
