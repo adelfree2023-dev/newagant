@@ -102,6 +102,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
+      - PORT=3001
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3001:3001"
@@ -122,6 +123,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
+      - PORT=3002
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3002:3002"
@@ -142,6 +144,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
+      - PORT=3003
       - NEXT_PUBLIC_API_URL=http://35.226.47.16:8000
     ports:
       - "3003:3003"
