@@ -20,7 +20,7 @@ export default function HeaderV1() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const cartItemsCount = cart.items.reduce((acc, item) => acc + item.quantity, 0);
+    const cartItemsCount = cart?.items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
 
     return (
         <header className="sticky top-0 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
